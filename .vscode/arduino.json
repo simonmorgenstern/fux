@@ -1,0 +1,7 @@
+{
+    "configuration": "cpu=atmega328old",
+    "board": "arduino:avr:nano",
+    "port": "/dev/cu.usbserial-1450",
+    "programmer": "arduino:avrispmkii",
+    "sketch": "controller/controller.ino"
+}
