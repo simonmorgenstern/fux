@@ -7,14 +7,9 @@
 
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
 
 struct FrameEditorToolbar: View {
-    var pixelColorArray = [Color](repeatElement(Color(red: 255, green: 255, blue: 255, opacity: 1.0), count: 268))
+
     @State private var currentColor = Color(red: 255, green: 255, blue: 0, opacity: 1.0)
     @State private var brightness = 25.0
     @State private var brightnessInput = "25"
@@ -26,7 +21,6 @@ struct FrameEditorToolbar: View {
                 .font(.headline)
             Divider()
             HStack {
-                Text("Color Picker ->")
                 ColorPicker("Farbauswahl", selection: $currentColor)
             }
             VStack {
@@ -55,9 +49,12 @@ struct FrameEditorToolbar: View {
                 brightnessInput = String(format: "%.0f", brightness)
             }.accentColor(currentColor)
             Divider()
-            Toggle("Apple Pencil Modus", isOn: $applePencilModus)
-                .toggleStyle(.switch)
-        }.padding()
+            HStack {
+                Toggle("Apple Pencil Modus", isOn: $applePencilModus)
+            }
+            Spacer()
+        }
+        .padding()
     }
     
     func setBrightness(brightnessString: String) -> Bool {

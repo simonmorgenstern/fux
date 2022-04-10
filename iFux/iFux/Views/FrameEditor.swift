@@ -8,8 +8,13 @@
 import SwiftUI
 
 struct FrameEditor: View {
+    @State var pixelColorArray = [Color](repeatElement(Color(red: 255, green: 255, blue: 255, opacity: 1.0), count: 268))
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        HStack {
+            PixelFux(pixelColorArray: $pixelColorArray)
+            FrameEditorToolbar()
+        }
     }
 }
 
