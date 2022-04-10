@@ -7,8 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		495BD93A27FE16B4006272AB /* ExternalAccessory.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 495BD93927FE16B4006272AB /* ExternalAccessory.framework */; };
+		4915953F28002D7A0029D8C7 /* coords.json in Resources */ = {isa = PBXBuildFile; fileRef = 4915953E28002D7A0029D8C7 /* coords.json */; };
 		4960719027FF2A7A004B6E7E /* FrameEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960718F27FF2A7A004B6E7E /* FrameEditor.swift */; };
+		4960719227FF2B75004B6E7E /* PixelFux.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719127FF2B75004B6E7E /* PixelFux.swift */; };
+		4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */; };
+		4960719627FF9041004B6E7E /* PixelData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719527FF9041004B6E7E /* PixelData.swift */; };
+		4989BC4E27FF94640052DFCC /* DataLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4989BC4D27FF94640052DFCC /* DataLoader.swift */; };
 		49C731F727F23A2E00CDB50A /* iFuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C731F627F23A2E00CDB50A /* iFuxApp.swift */; };
 		49C731F927F23A2E00CDB50A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C731F827F23A2E00CDB50A /* ContentView.swift */; };
 		49C731FB27F23A3000CDB50A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 49C731FA27F23A3000CDB50A /* Assets.xcassets */; };
@@ -16,9 +20,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4915953E28002D7A0029D8C7 /* coords.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = coords.json; path = ../../../assets/coords.json; sourceTree = "<group>"; };
 		495BD93627FDE3AE006272AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		495BD93927FE16B4006272AB /* ExternalAccessory.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExternalAccessory.framework; path = System/Library/Frameworks/ExternalAccessory.framework; sourceTree = SDKROOT; };
 		4960718F27FF2A7A004B6E7E /* FrameEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameEditor.swift; sourceTree = "<group>"; };
+		4960719127FF2B75004B6E7E /* PixelFux.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFux.swift; sourceTree = "<group>"; };
+		4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameEditorToolbar.swift; sourceTree = "<group>"; };
+		4960719527FF9041004B6E7E /* PixelData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelData.swift; sourceTree = "<group>"; };
+		4989BC4D27FF94640052DFCC /* DataLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoader.swift; sourceTree = "<group>"; };
 		49C731F327F23A2E00CDB50A /* iFux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iFux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49C731F627F23A2E00CDB50A /* iFuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iFuxApp.swift; sourceTree = "<group>"; };
 		49C731F827F23A2E00CDB50A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -31,25 +39,25 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				495BD93A27FE16B4006272AB /* ExternalAccessory.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		495BD93827FE16B4006272AB /* Frameworks */ = {
+		4915953D28002D5A0029D8C7 /* Data */ = {
 			isa = PBXGroup;
 			children = (
-				495BD93927FE16B4006272AB /* ExternalAccessory.framework */,
+				4915953E28002D7A0029D8C7 /* coords.json */,
 			);
-			name = Frameworks;
+			path = Data;
 			sourceTree = "<group>";
 		};
 		4960718E27FF2A5B004B6E7E /* FrameEditor */ = {
 			isa = PBXGroup;
 			children = (
-				4960718F27FF2A7A004B6E7E /* FrameEditor.swift */,
+				4960719127FF2B75004B6E7E /* PixelFux.swift */,
+				4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */,
 			);
 			path = FrameEditor;
 			sourceTree = "<group>";
@@ -59,7 +67,6 @@
 			children = (
 				49C731F527F23A2E00CDB50A /* iFux */,
 				49C731F427F23A2E00CDB50A /* Products */,
-				495BD93827FE16B4006272AB /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -74,6 +81,7 @@
 		49C731F527F23A2E00CDB50A /* iFux */ = {
 			isa = PBXGroup;
 			children = (
+				4915953D28002D5A0029D8C7 /* Data */,
 				495BD93627FDE3AE006272AB /* Info.plist */,
 				49C7320727F23D8500CDB50A /* Models */,
 				49C7320427F23A5600CDB50A /* Views */,
@@ -96,6 +104,7 @@
 		49C7320427F23A5600CDB50A /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				4960718F27FF2A7A004B6E7E /* FrameEditor.swift */,
 				4960718E27FF2A5B004B6E7E /* FrameEditor */,
 			);
 			path = Views;
@@ -104,6 +113,8 @@
 		49C7320727F23D8500CDB50A /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				4960719527FF9041004B6E7E /* PixelData.swift */,
+				4989BC4D27FF94640052DFCC /* DataLoader.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -167,6 +178,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				49C731FE27F23A3000CDB50A /* Preview Assets.xcassets in Resources */,
+				4915953F28002D7A0029D8C7 /* coords.json in Resources */,
 				49C731FB27F23A3000CDB50A /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -178,8 +190,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4960719627FF9041004B6E7E /* PixelData.swift in Sources */,
+				4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */,
+				4989BC4E27FF94640052DFCC /* DataLoader.swift in Sources */,
 				49C731F927F23A2E00CDB50A /* ContentView.swift in Sources */,
 				4960719027FF2A7A004B6E7E /* FrameEditor.swift in Sources */,
+				4960719227FF2B75004B6E7E /* PixelFux.swift in Sources */,
 				49C731F727F23A2E00CDB50A /* iFuxApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
