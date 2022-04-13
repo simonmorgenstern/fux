@@ -9,11 +9,8 @@ import SwiftUI
 
 
 struct FrameEditorToolbar: View {
-
-    @Binding var currentColor: Color
-    @Binding var brightness: Double
-    @Binding var applePencilModus: Bool
-    @State var brightnessInput = "25"
+    @Binding var frame: Frame
+    @State var brightnessInput = ""
     
     var body: some View {
         VStack {
@@ -21,12 +18,12 @@ struct FrameEditorToolbar: View {
                 .font(.headline)
             Divider()
             HStack {
-                ColorPicker("Farbauswahl", selection: $currentColor)
+                ColorPicker("Farbauswahl", selection: $frame.currentColor)
             }
             VStack {
                 Text("aktuelle Farbe")
                 Rectangle()
-                    .fill(currentColor)
+                    .fill(frame.currentColor)
                     .frame(width: 100, height: 100)
             }
             Divider()
@@ -39,28 +36,31 @@ struct FrameEditorToolbar: View {
                         }
                     }
             }
-            Slider(value: $brightness, in: 0...255, step: 1) {
+            Slider(value: $frame.brightness, in: 0...255, step: 1) {
                 Text("Helligkeit")
             } minimumValueLabel: {
                 Text("0")
             } maximumValueLabel: {
                 Text("255")
-            } .onChange(of: brightness) { newValue in
-                brightnessInput = String(format: "%.0f", brightness)
-            }.accentColor(currentColor)
+            } .onChange(of: frame.brightness) { newValue in
+                brightnessInput = String(format: "%.0f", frame.brightness)
+            }.accentColor(frame.currentColor)
             Divider()
             HStack {
-                Toggle("Apple Pencil Modus", isOn: $applePencilModus)
+                Toggle("Apple Pencil Modus", isOn: $frame.applePencilModus)
             }
             Spacer()
         }
         .padding()
+        .onAppear {
+            brightnessInput = String(frame.brightness)
+        }
     }
     
     func setBrightness(brightnessString: String) -> Bool {
         if let newBrightness = Double(brightnessString) {
             if newBrightness > 0 && newBrightness < 256 {
-                brightness = newBrightness
+                frame.brightness = newBrightness
                 return true
             }
         }
