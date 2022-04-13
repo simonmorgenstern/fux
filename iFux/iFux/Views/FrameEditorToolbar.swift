@@ -11,19 +11,14 @@ import SwiftUI
 struct FrameEditorToolbar: View {
     @Binding var frame: Frame
     @State var brightnessInput = ""
-    
+
     var body: some View {
         VStack {
             Text("Frame Editor Einstellungen")
                 .font(.headline)
             Divider()
             HStack {
-                ColorPicker("Farbauswahl", selection: $frame.currentColor)
-                    .onChange(of: frame.currentColor) { value in
-                        if let components = value.components {
-                            print(components[0])
-                        }
-                    }
+                ColorPicker("Farbauswahl", selection: $currentColor)
             }
             VStack {
                 Text("aktuelle Farbe")
