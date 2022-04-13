@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		4915953F28002D7A0029D8C7 /* coords.json in Resources */ = {isa = PBXBuildFile; fileRef = 4915953E28002D7A0029D8C7 /* coords.json */; };
+		49479CAE2806FA510088A097 /* Frame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49479CAD2806FA510088A097 /* Frame.swift */; };
+		49479CB02806FCF40088A097 /* FrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49479CAF2806FCF40088A097 /* FrameStore.swift */; };
 		4960719027FF2A7A004B6E7E /* FrameEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960718F27FF2A7A004B6E7E /* FrameEditor.swift */; };
 		4960719227FF2B75004B6E7E /* PixelFux.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719127FF2B75004B6E7E /* PixelFux.swift */; };
 		4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */; };
@@ -21,6 +23,8 @@
 
 /* Begin PBXFileReference section */
 		4915953E28002D7A0029D8C7 /* coords.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = coords.json; path = ../../../assets/coords.json; sourceTree = "<group>"; };
+		49479CAD2806FA510088A097 /* Frame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Frame.swift; sourceTree = "<group>"; };
+		49479CAF2806FCF40088A097 /* FrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameStore.swift; sourceTree = "<group>"; };
 		495BD93627FDE3AE006272AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4960718F27FF2A7A004B6E7E /* FrameEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameEditor.swift; sourceTree = "<group>"; };
 		4960719127FF2B75004B6E7E /* PixelFux.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFux.swift; sourceTree = "<group>"; };
@@ -51,15 +55,6 @@
 				4915953E28002D7A0029D8C7 /* coords.json */,
 			);
 			path = Data;
-			sourceTree = "<group>";
-		};
-		4960718E27FF2A5B004B6E7E /* FrameEditor */ = {
-			isa = PBXGroup;
-			children = (
-				4960719127FF2B75004B6E7E /* PixelFux.swift */,
-				4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */,
-			);
-			path = FrameEditor;
 			sourceTree = "<group>";
 		};
 		49C731EA27F23A2E00CDB50A = {
@@ -104,8 +99,9 @@
 		49C7320427F23A5600CDB50A /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				4960719127FF2B75004B6E7E /* PixelFux.swift */,
 				4960718F27FF2A7A004B6E7E /* FrameEditor.swift */,
-				4960718E27FF2A5B004B6E7E /* FrameEditor */,
+				4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -115,6 +111,8 @@
 			children = (
 				4960719527FF9041004B6E7E /* PixelData.swift */,
 				4989BC4D27FF94640052DFCC /* DataLoader.swift */,
+				49479CAD2806FA510088A097 /* Frame.swift */,
+				49479CAF2806FCF40088A097 /* FrameStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -191,8 +189,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				4960719627FF9041004B6E7E /* PixelData.swift in Sources */,
+				49479CAE2806FA510088A097 /* Frame.swift in Sources */,
 				4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */,
 				4989BC4E27FF94640052DFCC /* DataLoader.swift in Sources */,
+				49479CB02806FCF40088A097 /* FrameStore.swift in Sources */,
 				49C731F927F23A2E00CDB50A /* ContentView.swift in Sources */,
 				4960719027FF2A7A004B6E7E /* FrameEditor.swift in Sources */,
 				4960719227FF2B75004B6E7E /* PixelFux.swift in Sources */,

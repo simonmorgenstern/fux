@@ -10,10 +10,10 @@ import SwiftUI
 
 struct FrameEditorToolbar: View {
 
-    @State private var currentColor = Color(red: 255, green: 255, blue: 0, opacity: 1.0)
-    @State private var brightness = 25.0
-    @State private var brightnessInput = "25"
-    @State private var applePencilModus = false
+    @Binding var currentColor: Color
+    @Binding var brightness: Double
+    @Binding var applePencilModus: Bool
+    @State var brightnessInput = "25"
     
     var body: some View {
         VStack {
@@ -68,9 +68,3 @@ struct FrameEditorToolbar: View {
     }
 }
 
-struct FrameEditorToolbar_Previews: PreviewProvider {
-    static var previews: some View {
-        FrameEditorToolbar()
-            .previewInterfaceOrientation(.landscapeLeft)
-    }
-}
