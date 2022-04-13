@@ -13,4 +13,5 @@ struct Frame {
     var pixelColor = [Color](repeatElement(Color(red: 255, green: 255, blue: 255, opacity: 1.0), count: 268))
     var currentColor: Color
     var applePencilModus: Bool
+    var brightness: Double
 }

@@ -18,7 +18,7 @@ struct FrameEditorToolbar: View {
                 .font(.headline)
             Divider()
             HStack {
-                ColorPicker("Farbauswahl", selection: $currentColor)
+                ColorPicker("Farbauswahl", selection: $frame.currentColor)
             }
             VStack {
                 Text("aktuelle Farbe")

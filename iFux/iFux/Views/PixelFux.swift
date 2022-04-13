@@ -10,9 +10,7 @@ import SwiftUI
 import CoreGraphics
 
 struct PixelFux: View {
-    @Binding var pixelColorArray: [Color]
-    @Binding var currentColor: Color
-    @Binding var applePencilModus: Bool
+    @Binding var frame: Frame
     
     @State var pixelData = [PixelData]()
     
@@ -50,14 +48,14 @@ struct PixelFux: View {
     var drag: some Gesture {
         DragGesture()
             .onChanged { value in
-                if applePencilModus {
+                if frame.applePencilModus {
                     currentPencilLocation = value.location
                     // lock fox, if pencil over pixel -> fill with current color
                     let applePencilRect = CGRect(x: value.location.x - 9, y: value.location.y - 9, width: 18.0, height: 18.0)
                     for i in 0..<268 {
                         let pixelRect = CGRect(x: Double(pixelData[i].x) * scaling + translation.x, y: Double(pixelData[i].y) * scaling + translation.y, width: 12.0, height: 12.0)
                         if applePencilRect.intersects(pixelRect) {
-                            pixelColorArray[i] = currentColor
+                            frame.pixelColor[i] = frame.currentColor
                         }
                     }
                 } else {
@@ -123,15 +121,15 @@ struct PixelFux: View {
                 if pixelData.count > 0 {
                     ForEach(0..<pixelData.count) { index in
                         Circle()
-                            .fill(pixelColorArray[index])
+                            .fill(frame.pixelColor[index])
                             .frame(width: 12, height: 12)
                             .position(x: CGFloat(pixelData[index].x) * scaling, y: CGFloat(pixelData[index].y) * scaling)
                             .onTapGesture {
-                                pixelColorArray[index] = currentColor
+                                frame.pixelColor[index] = frame.currentColor
                             }
                     }
                 }
-                if let location = currentPencilLocation, applePencilModus{
+                if let location = currentPencilLocation, frame.applePencilModus{
                     Circle()
                         .fill(Color.red)
                         .frame(width: 18, height: 18)
