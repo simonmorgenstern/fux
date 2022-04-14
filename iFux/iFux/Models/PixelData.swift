@@ -8,7 +8,7 @@
 import Foundation
 
 struct PixelData: Codable {
-    var x: Int
-    var y: Int
+    var x: Double
+    var y: Double
     var index: Int
 }
