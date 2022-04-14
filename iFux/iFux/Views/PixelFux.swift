@@ -22,8 +22,8 @@ struct PixelFux: View {
     @GestureState private var startLocation: CGPoint? = nil
     @State private var currentPencilLocation: CGPoint? = nil
     
-    var maxPixelX = 460
-    var maxPixelY = 600
+    var maxPixelX: Double = 460
+    var maxPixelY: Double = 600
     
     var magnification: some Gesture {
         MagnificationGesture()
@@ -32,8 +32,8 @@ struct PixelFux: View {
             }
             .onChanged { value in
                 if (scaling * magnifyBy > 0.5 && scaling * magnifyBy < 2) {
-                    let newXOf184 = Double(pixelData[184].x) * scaling * magnifyBy + translation.x
-                    let newYOf184 = Double(pixelData[184].y) * scaling * magnifyBy + translation.y
+                    let newXOf184 = pixelData[184].x * scaling * magnifyBy + translation.x
+                    let newYOf184 = pixelData[184].y * scaling * magnifyBy + translation.y
                     if newXOf184 > 0 && newYOf184 > 0 {
                         scaling *= magnifyBy
                         lastScalingValue = value
@@ -53,15 +53,15 @@ struct PixelFux: View {
                     // lock fox, if pencil over pixel -> fill with current color
                     let applePencilRect = CGRect(x: value.location.x - 9, y: value.location.y - 9, width: 18.0, height: 18.0)
                     for i in 0..<268 {
-                        let pixelRect = CGRect(x: Double(pixelData[i].x) * scaling + translation.x, y: Double(pixelData[i].y) * scaling + translation.y, width: 12.0, height: 12.0)
+                        let pixelRect = CGRect(x: pixelData[i].x * scaling + translation.x, y: pixelData[i].y * scaling + translation.y, width: 12.0, height: 12.0)
                         if applePencilRect.intersects(pixelRect) {
                             frame.pixelColor[i] = frame.currentColor
                         }
                     }
                 } else {
                     // drag fox around
-                    let foxWidth = Double(maxPixelX) * scaling
-                    let foxHeight = Double(maxPixelY) * scaling
+                    let foxWidth = maxPixelX * scaling
+                    let foxHeight = maxPixelY * scaling
                     var newLocation = startLocation ?? translation
                     
                     let foxIsInFrameLeft = newLocation.x + value.translation.width > foxWidth * -0.5
@@ -108,11 +108,11 @@ struct PixelFux: View {
     }
     
     func scaleAndTranslate() {
-        while (Double(maxPixelX) * (scaling + 0.1) < UIScreen.main.bounds.height && Double(maxPixelY) * (scaling + 0.1) < UIScreen.main.bounds.height) {
+        while (maxPixelX * (scaling + 0.1) < UIScreen.main.bounds.height && maxPixelY * (scaling + 0.1) < UIScreen.main.bounds.height) {
             scaling += 0.1
         }
-        translation.x = (UIScreen.main.bounds.height - Double(maxPixelX) * scaling) * 0.5
-        translation.y = (UIScreen.main.bounds.height - Double(maxPixelY) * scaling) * 0.25
+        translation.x = (UIScreen.main.bounds.height - maxPixelX * scaling) * 0.5
+        translation.y = (UIScreen.main.bounds.height - maxPixelY * scaling) * 0.25
     }
     
     var body: some View {
@@ -123,7 +123,7 @@ struct PixelFux: View {
                         Circle()
                             .fill(frame.pixelColor[index])
                             .frame(width: 12, height: 12)
-                            .position(x: CGFloat(pixelData[index].x) * scaling, y: CGFloat(pixelData[index].y) * scaling)
+                            .position(x: pixelData[index].x * scaling, y: pixelData[index].y * scaling)
                             .onTapGesture {
                                 frame.pixelColor[index] = frame.currentColor
                             }
