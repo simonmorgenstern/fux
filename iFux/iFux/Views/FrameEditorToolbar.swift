@@ -23,7 +23,7 @@ struct FrameEditorToolbar: View {
             VStack {
                 Text("aktuelle Farbe")
                 Rectangle()
-                    .fill(frame.currentColor)
+                    .fill(Color(frame.currentColor))
                     .frame(width: 100, height: 100)
             }
             Divider()
@@ -44,7 +44,7 @@ struct FrameEditorToolbar: View {
                 Text("255")
             } .onChange(of: frame.brightness) { newValue in
                 brightnessInput = String(format: "%.0f", frame.brightness)
-            }.accentColor(frame.currentColor)
+            }.accentColor(Color(frame.currentColor))
             Divider()
             HStack {
                 Toggle("Apple Pencil Modus", isOn: $frame.applePencilModus)
