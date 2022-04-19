@@ -2,8 +2,6 @@
 //  PixelDataStore.swift
 //  iFux
 //
-//  Created by Simon Morgenstern on 14.04.22.
-//
 
 import Foundation
 import UIKit
@@ -12,11 +10,11 @@ final class PixelDataStore: ObservableObject {
     @Published var pixelData: [PixelData]?
     var maxPixelX: Double = 0
     var maxPixelY: Double = 0
-    
+
     init() {
         loadData()
     }
-    
+
     func loadData() {
         if let url = Bundle.main.url(forResource: "coords", withExtension: "json") {
             do {
@@ -36,5 +34,3 @@ final class PixelDataStore: ObservableObject {
         }
     }
 }
-
-
