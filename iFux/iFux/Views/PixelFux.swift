@@ -11,8 +11,9 @@ import CoreGraphics
 
 struct PixelFux: View {
     @Binding var frame: Frame
+    @EnvironmentObject var pixelDataStore: PixelDataStore
     
-    @State var pixelData = [PixelData]()
+    var boxSize = UIScreen.main.bounds.height
     
     @State var scaling = 1.0
     @State var lastScalingValue = 1.0
@@ -31,7 +32,7 @@ struct PixelFux: View {
                 gestureState = currentState / lastScalingValue
             }
             .onChanged { value in
-                if (scaling * magnifyBy > 0.5 && scaling * magnifyBy < 2) {
+                if let pixelData = pixelDataStore.pixelData, (scaling * magnifyBy > 0.5 && scaling * magnifyBy < 2) {
                     let newXOf184 = pixelData[184].x * scaling * magnifyBy + translation.x
                     let newYOf184 = pixelData[184].y * scaling * magnifyBy + translation.y
                     if newXOf184 > 0 && newYOf184 > 0 {
@@ -48,7 +49,7 @@ struct PixelFux: View {
     var drag: some Gesture {
         DragGesture()
             .onChanged { value in
-                if frame.applePencilModus {
+                if frame.applePencilModus, let pixelData = pixelDataStore.pixelData{
                     currentPencilLocation = value.location
                     // lock fox, if pencil over pixel -> fill with current color
                     let applePencilRect = CGRect(x: value.location.x - 9, y: value.location.y - 9, width: 18.0, height: 18.0)
@@ -62,28 +63,29 @@ struct PixelFux: View {
                     // drag fox around
                     let foxWidth = maxPixelX * scaling
                     let foxHeight = maxPixelY * scaling
+                    
                     var newLocation = startLocation ?? translation
                     
                     let foxIsInFrameLeft = newLocation.x + value.translation.width > foxWidth * -0.5
-                    let foxIsInFrameRight = newLocation.x + value.translation.width < UIScreen.main.bounds.height - foxWidth * 0.5
+                    let foxIsInFrameRight = newLocation.x + value.translation.width < boxSize - foxWidth * 0.5
                     
                     if foxIsInFrameLeft && foxIsInFrameRight {
                         newLocation.x += value.translation.width
                     } else if !foxIsInFrameLeft{
                         newLocation.x = foxWidth * -0.5
                     } else if !foxIsInFrameRight {
-                        newLocation.x = UIScreen.main.bounds.height - foxWidth / 2
+                        newLocation.x = boxSize - foxWidth / 2
                     }
                     
                     let foxIsInFrameUp = newLocation.y + value.translation.height > foxHeight * -0.5
-                    let foxIsInFrameDown = newLocation.y + value.translation.height < UIScreen.main.bounds.height - foxHeight * 0.5
+                    let foxIsInFrameDown = newLocation.y + value.translation.height < boxSize - foxHeight * 0.5
                     
                     if foxIsInFrameUp && foxIsInFrameDown {
                         newLocation.y += value.translation.height
                     } else if !foxIsInFrameUp {
                         newLocation.y = foxHeight * -0.5
                     } else if !foxIsInFrameDown {
-                        newLocation.y = UIScreen.main.bounds.height - foxHeight * 0.5
+                        newLocation.y = boxSize - foxHeight * 0.5
                     }
                     
                     self.translation = newLocation
@@ -95,58 +97,44 @@ struct PixelFux: View {
             .onEnded { _ in
                 currentPencilLocation = nil
             }
-        
-    }
-    
-    func loadPixelData() {
-        if let url = Bundle.main.url(forResource: "coords", withExtension: "json") {
-            do {
-                let jsonData = try! Data(contentsOf: url)
-                pixelData = try! JSONDecoder().decode([PixelData].self, from: jsonData)
-            }
-        }
     }
     
     func scaleAndTranslate() {
-        while (maxPixelX * (scaling + 0.1) < UIScreen.main.bounds.height && maxPixelY * (scaling + 0.1) < UIScreen.main.bounds.height) {
+        while (maxPixelX * (scaling + 0.1) < boxSize && maxPixelY * (scaling + 0.1) < boxSize) {
             scaling += 0.1
         }
-        translation.x = (UIScreen.main.bounds.height - maxPixelX * scaling) * 0.5
-        translation.y = (UIScreen.main.bounds.height - maxPixelY * scaling) * 0.25
+        translation.x = (boxSize - maxPixelX * scaling) * 0.5
+        translation.y = (boxSize - maxPixelY * scaling) * 0.25
     }
     
     var body: some View {
         ZStack {
-            ZStack {
-                if pixelData.count > 0 {
-                    ForEach(0..<pixelData.count) { index in
-                        Circle()
-                            .fill(frame.pixelColor[index])
-                            .frame(width: 12, height: 12)
-                            .position(x: pixelData[index].x * scaling, y: pixelData[index].y * scaling)
-                            .onTapGesture {
-                                frame.pixelColor[index] = frame.currentColor
-                            }
-                    }
-                }
-                if let location = currentPencilLocation, frame.applePencilModus{
+            if let pixelData = pixelDataStore.pixelData, pixelData.count > 0 {
+                ForEach(0..<pixelData.count) { index in
                     Circle()
-                        .fill(Color.red)
-                        .frame(width: 18, height: 18)
-                        .position(x: location.x - translation.x - 18, y: location.y - translation.y - 18)
+                        .fill(Color(frame.pixelColor[index]))
+                        .frame(width: 12, height: 12)
+                        .position(x: pixelData[index].x * scaling, y: pixelData[index].y * scaling)
+                        .onTapGesture {
+                            frame.pixelColor[index] = frame.currentColor
+                        }
                 }
             }
-            .padding()
-            .offset(x: translation.x, y: translation.y)
-            .onAppear {
-                loadPixelData()
-                scaleAndTranslate()
+            if let location = currentPencilLocation, frame.applePencilModus {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 18, height: 18)
+                    .position(x: location.x - translation.x - 18, y: location.y - translation.y - 18)
             }
-            .frame(width: UIScreen.main.bounds.height, height: UIScreen.main.bounds.height)
-            .background(Color.black)
-            .gesture(drag)
-            .simultaneousGesture(magnification)
-
         }
+        .padding()
+        .offset(x: translation.x, y: translation.y)
+        .onAppear {
+            scaleAndTranslate()
+        }
+        .frame(width: boxSize, height: boxSize)
+        .background(Color.black)
+        .gesture(drag)
+        .simultaneousGesture(magnification)
     }
 }

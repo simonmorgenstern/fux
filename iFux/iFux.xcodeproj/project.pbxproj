@@ -14,7 +14,7 @@
 		4960719227FF2B75004B6E7E /* PixelFux.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719127FF2B75004B6E7E /* PixelFux.swift */; };
 		4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */; };
 		4960719627FF9041004B6E7E /* PixelData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4960719527FF9041004B6E7E /* PixelData.swift */; };
-		4989BC4E27FF94640052DFCC /* DataLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4989BC4D27FF94640052DFCC /* DataLoader.swift */; };
+		499FF12D2808436200F4F080 /* PixelDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 499FF12C2808436200F4F080 /* PixelDataStore.swift */; };
 		49C731F727F23A2E00CDB50A /* iFuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C731F627F23A2E00CDB50A /* iFuxApp.swift */; };
 		49C731F927F23A2E00CDB50A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C731F827F23A2E00CDB50A /* ContentView.swift */; };
 		49C731FB27F23A3000CDB50A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 49C731FA27F23A3000CDB50A /* Assets.xcassets */; };
@@ -30,7 +30,7 @@
 		4960719127FF2B75004B6E7E /* PixelFux.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFux.swift; sourceTree = "<group>"; };
 		4960719327FF2B9D004B6E7E /* FrameEditorToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameEditorToolbar.swift; sourceTree = "<group>"; };
 		4960719527FF9041004B6E7E /* PixelData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelData.swift; sourceTree = "<group>"; };
-		4989BC4D27FF94640052DFCC /* DataLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoader.swift; sourceTree = "<group>"; };
+		499FF12C2808436200F4F080 /* PixelDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelDataStore.swift; sourceTree = "<group>"; };
 		49C731F327F23A2E00CDB50A /* iFux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iFux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49C731F627F23A2E00CDB50A /* iFuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iFuxApp.swift; sourceTree = "<group>"; };
 		49C731F827F23A2E00CDB50A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -109,10 +109,10 @@
 		49C7320727F23D8500CDB50A /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				4960719527FF9041004B6E7E /* PixelData.swift */,
-				4989BC4D27FF94640052DFCC /* DataLoader.swift */,
 				49479CAD2806FA510088A097 /* Frame.swift */,
 				49479CAF2806FCF40088A097 /* FrameStore.swift */,
+				4960719527FF9041004B6E7E /* PixelData.swift */,
+				499FF12C2808436200F4F080 /* PixelDataStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -188,10 +188,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				499FF12D2808436200F4F080 /* PixelDataStore.swift in Sources */,
 				4960719627FF9041004B6E7E /* PixelData.swift in Sources */,
 				49479CAE2806FA510088A097 /* Frame.swift in Sources */,
 				4960719427FF2B9D004B6E7E /* FrameEditorToolbar.swift in Sources */,
-				4989BC4E27FF94640052DFCC /* DataLoader.swift in Sources */,
 				49479CB02806FCF40088A097 /* FrameStore.swift in Sources */,
 				49C731F927F23A2E00CDB50A /* ContentView.swift in Sources */,
 				4960719027FF2A7A004B6E7E /* FrameEditor.swift in Sources */,

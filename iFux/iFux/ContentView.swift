@@ -8,9 +8,10 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State var x = 0
+    @StateObject var pixelDataStore = PixelDataStore()
+    
     var body: some View {
-        FrameEditor()
+        FrameEditor().environmentObject(pixelDataStore)
     }
 }
 
