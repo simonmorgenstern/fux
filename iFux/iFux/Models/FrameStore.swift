@@ -10,4 +10,5 @@ import Foundation
 final class FrameStore: ObservableObject {
     @Published var frames: [Frame] = []
 
+
 }

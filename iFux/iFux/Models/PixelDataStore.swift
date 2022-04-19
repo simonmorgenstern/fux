@@ -2,6 +2,8 @@
 //  PixelDataStore.swift
 //  iFux
 //
+//  Created by Simon Morgenstern on 19.04.22.
+//
 
 import Foundation
 import UIKit
