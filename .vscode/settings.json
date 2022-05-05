@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "regex": "cpp",
+        "sstream": "cpp",
+        "chrono": "cpp"
+    },
+    "python.languageServer": "Pylance"
+}
