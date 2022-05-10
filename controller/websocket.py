@@ -5,7 +5,6 @@ import tornado.web
 
 PORT = 80
 
-
 class MainHandler(tornado.web.RequestHandler):
   def get(self):
      print ("[HTTP](MainHandler) User Connected.")
@@ -34,7 +33,6 @@ if __name__ == "__main__":
         http_server = tornado.httpserver.HTTPServer(application)
         http_server.listen(PORT)
         main_loop = tornado.ioloop.IOLoop.instance()
-
         print ("Tornado Server started")
         main_loop.start()
 
