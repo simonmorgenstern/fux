@@ -11,7 +11,7 @@ In my case `ws://192.168.178.82`
 ### Change Instructions
 For each Frame the fux expects a array filled with what has changed in comparison to the previous frame. 
 The array contains Color LED pairs. 
-Message is formatted as a json string. 
+Message is formatted as json. 
 
 Colors can either be a 
 - "r, g, b" string 
