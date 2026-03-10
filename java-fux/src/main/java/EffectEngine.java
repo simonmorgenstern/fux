@@ -55,6 +55,16 @@ public class EffectEngine implements Runnable {
             // Create effect instance
             if ("radial_wave".equals(algorithm)) {
                 currentEffect = new RadialWaveEffect();
+            } else if ("rainbow_pulse".equals(algorithm)) {
+                currentEffect = new RainbowPulseEffect();
+            } else if ("sparkle".equals(algorithm)) {
+                currentEffect = new SparkleEffect();
+            } else if ("fire".equals(algorithm)) {
+                currentEffect = new FireEffect();
+            } else if ("breathing".equals(algorithm)) {
+                currentEffect = new BreathingEffect();
+            } else if ("snake".equals(algorithm)) {
+                currentEffect = new SnakeEffect();
             } else {
                 System.err.println("Unknown algorithm: " + algorithm);
                 return;
