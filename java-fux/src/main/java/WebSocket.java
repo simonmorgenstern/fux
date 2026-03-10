@@ -17,6 +17,7 @@ public class WebSocket extends WebSocketServer {
     private static Ws281xLedStrip sideStrip = new Ws281xLedStrip(120, 13, 800000, 10, 200, 1, false, LedStripType.WS2811_STRIP_GRB, true);
     private static MusicMode musicModeRunner = new MusicMode(fuxStrip);
     private static Thread musicModeThread;
+    private static EffectEngine effectEngine = new EffectEngine(fuxStrip, sideStrip);
 
     public WebSocket(int port) throws UnknownHostException {
         super(new InetSocketAddress(port));
@@ -71,6 +72,15 @@ public class WebSocket extends WebSocketServer {
         else if (message.matches("musicModeOff")) {
             stopMusicMode();
         } 
+        else if (message.startsWith("EFFECT:")) {
+            String effectName = message.substring(7).trim();
+            System.out.println("Loading effect: " + effectName);
+            effectEngine.loadEffect(effectName);
+        }
+        else if (message.equals("STOP_EFFECT")) {
+            System.out.println("Stopping effect");
+            effectEngine.stop();
+        }
         else {
             ParsedFrame parsedFrame = frameParser.getParsedFrame(message);
             this.parsedFrames.add(parsedFrame);

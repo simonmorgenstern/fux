@@ -1,0 +1,19 @@
+{
+  "name": "Radial Color Waves",
+  "description": "Continuous rainbow waves emanating from center",
+  "author": "Aimon",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "radial_wave",
+  "fps": 33,
+  "parameters": {
+    "wave_spacing": 100,
+    "wave_width": 60,
+    "wave_speed": 5,
+    "colors_hsv": [0, 60, 120, 180, 240, 300],
+    "brightness": 1.0,
+    "center_x": null,
+    "center_y": null
+  },
+  "notes": "center_x/y = null means auto-calculate from LED coordinates"
+}
