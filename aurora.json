@@ -1,0 +1,14 @@
+{
+  "name": "Aurora Borealis",
+  "description": "Flowing northern lights with green, purple, and blue waves",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "aurora",
+  "parameters": {
+    "wave_speed": 0.5,
+    "wave_height": 250,
+    "num_waves": 3,
+    "brightness": 0.8,
+    "fps": 30
+  }
+}

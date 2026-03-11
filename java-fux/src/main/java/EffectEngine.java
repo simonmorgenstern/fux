@@ -65,6 +65,14 @@ public class EffectEngine implements Runnable {
                 currentEffect = new BreathingEffect();
             } else if ("snake".equals(algorithm)) {
                 currentEffect = new SnakeEffect();
+            } else if ("meteor_shower".equals(algorithm)) {
+                currentEffect = new MeteorShowerEffect();
+            } else if ("firework".equals(algorithm)) {
+                currentEffect = new FireworkEffect();
+            } else if ("rain".equals(algorithm)) {
+                currentEffect = new RainEffect();
+            } else if ("aurora".equals(algorithm)) {
+                currentEffect = new AuroraEffect();
             } else {
                 System.err.println("Unknown algorithm: " + algorithm);
                 return;

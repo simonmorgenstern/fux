@@ -81,6 +81,40 @@ public class WebSocket extends WebSocketServer {
             System.out.println("Stopping effect");
             effectEngine.stop();
         }
+        else if (message.equals("STOP") || message.equals("SHUTDOWN")) {
+            System.out.println("Shutdown command received - stopping server");
+            webSocket.send("Shutting down server...");
+            
+            // Clean shutdown sequence
+            new Thread(() -> {
+                try {
+                    // Stop music mode if running
+                    stopMusicMode();
+                    
+                    // Stop effect engine
+                    effectEngine.stop();
+                    
+                    // Clear all LEDs
+                    for (int i = 0; i < 268; i++) {
+                        fuxStrip.setPixel(i, 0, 0, 0);
+                        if (i < 120) {
+                            sideStrip.setPixel(i, 0, 0, 0);
+                        }
+                    }
+                    fuxStrip.render();
+                    sideStrip.render();
+                    
+                    Thread.sleep(500); // Give time for response to be sent
+                    
+                    System.out.println("Server shutting down...");
+                    this.stop(1000);
+                    System.exit(0);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+            }).start();
+        }
         else {
             ParsedFrame parsedFrame = frameParser.getParsedFrame(message);
             this.parsedFrames.add(parsedFrame);
