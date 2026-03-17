@@ -197,7 +197,7 @@
 <body>
     <header>
         <h1>LED Group Editor</h1>
-        <p class="subtitle">Select LEDs on the canvas, name the group, and save for use in effects.</p>
+        <p class="subtitle">Select LEDs on the canvas using click, box, or brush mode, name the group, and save for use in effects.</p>
     </header>
 
     <div class="main-content">
@@ -210,6 +210,7 @@
                 <div class="mode-buttons">
                     <button id="mode-click" class="btn active">Click</button>
                     <button id="mode-box" class="btn">Box</button>
+                    <button id="mode-brush" class="btn">Brush</button>
                 </div>
                 <button id="clear-selection" class="btn">Clear Selection</button>
                 <button id="select-all" class="btn">Select All</button>
@@ -230,7 +231,7 @@
     </div>
 
     <footer>
-        <p>LED coordinates from /api/coords • Use click or box to select LEDs • Saved groups stored in led-groups.json</p>
+        <p>LED coordinates from /api/coords • Use click, box, or brush to select LEDs • Saved groups stored in led-groups.json</p>
     </footer>
 
     <script>
@@ -243,10 +244,12 @@
                 this.selectedIndices = new Set();
                 this.selectionMode = 'click';
                 this.isDragging = false;
+                this.isPainting = false;
                 this.dragStart = { x: 0, y: 0 };
                 this.dragEnd = { x: 0, y: 0 };
                 
                 this.ledRadius = options.ledRadius || 5;
+                this.brushRadius = options.brushRadius || 15;
                 this.ledColor = options.ledColor || '#4b5563';
                 this.selectedColor = options.selectedColor || '#ef4444';
                 this.boxColor = options.boxColor || '#60a5fa';
@@ -401,6 +404,24 @@
                 this.draw();
             }
             
+            paintAtPosition(canvasX, canvasY) {
+                const centerLED = this.canvasToLED(canvasX, canvasY);
+                const brushRadiusInLEDSpace = this.brushRadius / this.scale;
+                
+                this.leds.forEach(led => {
+                    const dx = led.x - centerLED.x;
+                    const dy = led.y - centerLED.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance <= brushRadiusInLEDSpace && !led.selected) {
+                        led.selected = true;
+                        this.selectedIndices.add(led.index);
+                    }
+                });
+                
+                this.draw();
+            }
+            
             handleMouseDown(e) {
                 const rect = this.canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -416,30 +437,36 @@
                     }
                 } else if (this.selectionMode === 'box') {
                     this.isDragging = true;
+                } else if (this.selectionMode === 'brush') {
+                    this.isPainting = true;
+                    this.paintAtPosition(x, y);
                 }
             }
             
             handleMouseMove(e) {
-                if (!this.isDragging) return;
-                const rect = this.canvas.getBoundingClientRect();
-                this.dragEnd = {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-                this.draw();
-            }
-            
-            handleMouseUp(e) {
-                if (!this.isDragging) return;
                 const rect = this.canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 
-                if (this.selectionMode === 'box') {
+                if (this.isPainting && this.selectionMode === 'brush') {
+                    this.paintAtPosition(x, y);
+                } else if (this.isDragging && this.selectionMode === 'box') {
+                    this.dragEnd = { x, y };
+                    this.draw();
+                }
+            }
+            
+            handleMouseUp(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.selectionMode === 'box' && this.isDragging) {
                     this.selectInRect(this.dragStart.x, this.dragStart.y, x, y);
                 }
                 
                 this.isDragging = false;
+                this.isPainting = false;
                 this.draw();
             }
             
@@ -495,7 +522,8 @@
                 ledColor: '#4b5563',
                 selectedColor: '#ef4444',
                 boxColor: '#60a5fa',
-                backgroundColor: '#1e293b'
+                backgroundColor: '#1e293b',
+                brushRadius: 15
             });
             
             await ledCanvas.loadCoords();
@@ -511,6 +539,12 @@
                 document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
                 document.getElementById('mode-box').classList.add('active');
                 ledCanvas.selectionMode = 'box';
+            });
+            
+            document.getElementById('mode-brush').addEventListener('click', () => {
+                document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('mode-brush').classList.add('active');
+                ledCanvas.selectionMode = 'brush';
             });
             
             // Clear selection
