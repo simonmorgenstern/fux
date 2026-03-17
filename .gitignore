@@ -1,5 +1,9 @@
 controller/wpa_supplicant.conf
 
+# Node.js
+node_modules/
+led-namer/led-groups.json
+
  Created by https://www.toptal.com/developers/gitignore/api/swift,xcode,Cobjective-c,osx
 # Edit at https://www.toptal.com/developers/gitignore?templates=swift,xcode,Cobjective-c,osx
 

@@ -99,6 +99,18 @@ app.delete('/api/groups/:id', async (req, res) => {
   }
 });
 
+// Serve LED coordinates
+app.get('/api/coords', async (req, res) => {
+  try {
+    const coordsPath = path.join(__dirname, '..', 'assets', 'coords.json');
+    const data = await fs.readFile(coordsPath, 'utf8');
+    res.json(JSON.parse(data));
+  } catch (err) {
+    console.error('Error reading coords:', err);
+    res.status(500).json({ error: 'Failed to load LED coordinates' });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`LED Namer server running on http://localhost:${PORT}`);
