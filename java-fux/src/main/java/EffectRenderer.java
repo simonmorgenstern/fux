@@ -1,0 +1,274 @@
+
+import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import java.awt.Color;
+import java.io.FileReader;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * EffectRenderer handles the actual LED rendering for effects.
+ * Bridges the Effect system with hardware LED strips.
+ */
+public class EffectRenderer implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(EffectRenderer.class);
+    
+    private static final int MAIN_LED_COUNT = 268;
+    private static final int SIDE_LED_COUNT = 120;
+    private static final String EFFECTS_PATH = "/home/pi/fux-effects/";
+    private static final String COORDS_PATH_PRIMARY = "/home/pi/fux/assets/pixelCoordinates.json";
+    private static final String COORDS_PATH_FALLBACK = "pixelCoordinates.json";
+    
+    private final Ws281xLedStrip mainStrip;
+    private final Ws281xLedStrip sideStrip;
+    private final PixelCoordinates coordinates;
+    
+    private volatile Effect currentEffect = null;
+    private volatile boolean running = false;
+    private Thread renderThread;
+    
+    public EffectRenderer(Ws281xLedStrip mainStrip, Ws281xLedStrip sideStrip) {
+        this.mainStrip = mainStrip;
+        this.sideStrip = sideStrip;
+        
+        // Load pixel coordinates with fallback
+        PixelCoordinates coords = null;
+        try {
+            coords = new PixelCoordinates(COORDS_PATH_PRIMARY);
+            logger.info("Loaded pixel coordinates from: {}", COORDS_PATH_PRIMARY);
+        } catch (Exception e) {
+            logger.warn("Failed to load coordinates from {}, trying fallback", COORDS_PATH_PRIMARY);
+            try {
+                coords = new PixelCoordinates(COORDS_PATH_FALLBACK);
+                logger.info("Loaded pixel coordinates from: {}", COORDS_PATH_FALLBACK);
+            } catch (Exception e2) {
+                logger.error("Failed to load coordinates: {}", e2.getMessage());
+            }
+        }
+        this.coordinates = coords;
+    }
+    
+    /**
+     * Load and start rendering a new effect
+     */
+    public synchronized void loadEffect(String effectName) {
+        if (coordinates == null) {
+            logger.error("Cannot load effect: coordinates not loaded");
+            return;
+        }
+        
+        // Stop current effect
+        stopCurrentEffect();
+        
+        // Create new effect
+        Effect newEffect = createEffect(effectName);
+        if (newEffect != null) {
+            currentEffect = newEffect;
+            
+            // Start rendering thread if not running
+            if (!running) {
+                running = true;
+                renderThread = new Thread(this, "EffectRenderer");
+                renderThread.start();
+            }
+            
+            logger.info("Effect loaded: {}", effectName);
+        }
+    }
+    
+    /**
+     * Stop the current effect and renderer
+     */
+    public synchronized void stop() {
+        running = false;
+        
+        if (renderThread != null) {
+            renderThread.interrupt();
+            try {
+                renderThread.join(2000);
+                if (renderThread.isAlive()) {
+                    logger.warn("Render thread did not stop gracefully");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            renderThread = null;
+        }
+        
+        stopCurrentEffect();
+        clearAllLEDs();
+        logger.info("EffectRenderer stopped");
+    }
+    
+    /**
+     * Stop and cleanup current effect
+     */
+    private void stopCurrentEffect() {
+        if (currentEffect != null) {
+            try {
+                currentEffect.dispose();
+            } catch (Exception e) {
+                logger.error("Error disposing effect: {}", e.getMessage());
+            }
+            currentEffect = null;
+        }
+    }
+    
+    /**
+     * Create effect instance from name
+     */
+    private Effect createEffect(String effectName) {
+        try {
+            String effectPath = EFFECTS_PATH + effectName + ".json";
+            Gson gson = new Gson();
+            JsonObject effectDef = gson.fromJson(new FileReader(effectPath), JsonObject.class);
+            
+            String algorithm = effectDef.get("algorithm").getAsString();
+            JsonObject params = effectDef.getAsJsonObject("parameters");
+            
+            Effect effect = instantiateEffect(algorithm);
+            if (effect != null) {
+                effect.initialize(params, coordinates);
+                return effect;
+            } else {
+                logger.error("Unknown algorithm: {}", algorithm);
+            }
+        } catch (Exception e) {
+            logger.error("Error loading effect '{}': {}", effectName, e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * Instantiate effect by algorithm name
+     */
+    private Effect instantiateEffect(String algorithm) {
+        switch (algorithm) {
+            case "radial_wave": return new RadialWaveEffect();
+            case "rainbow_pulse": return new RainbowPulseEffect();
+            case "sparkle": return new SparkleEffect();
+            case "fire": return new FireEffect();
+            case "breathing": return new BreathingEffect();
+            case "snake": return new SnakeEffect();
+            case "meteor_shower": return new MeteorShowerEffect();
+            case "firework": return new FireworkEffect();
+            case "rain": return new RainEffect();
+            case "aurora": return new AuroraEffect();
+            case "bilateral_fill": return new BilateralFillEffect();
+            case "motion_blur": return new MotionBlurEffect();
+            case "gradient": return new GradientEffect();
+            case "box_mirror": return new BoxMirrorEffect();
+            case "eye_blink": return new EyeBlinkEffect();
+            case "diamond_pulse": return new DiamondPulseEffect();
+            case "box_wave": return new BoxWaveEffect();
+            case "outside_spin": return new OutsideSpinEffect();
+            default: return null;
+        }
+    }
+    
+    /**
+     * Clear all LEDs
+     */
+    private void clearAllLEDs() {
+        try {
+            for (int i = 0; i < MAIN_LED_COUNT; i++) {
+                mainStrip.setPixel(i, 0, 0, 0);
+            }
+            for (int i = 0; i < SIDE_LED_COUNT; i++) {
+                sideStrip.setPixel(i, 0, 0, 0);
+            }
+            mainStrip.render();
+            sideStrip.render();
+        } catch (Exception e) {
+            logger.error("Error clearing LEDs: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Main rendering loop
+     */
+    @Override
+    public void run() {
+        logger.info("EffectRenderer thread started");
+        
+        long frameNumber = 0;
+        
+        while (running) {
+            try {
+                Effect effect = currentEffect;
+                
+                if (effect != null) {
+                    renderFrame(effect, frameNumber);
+                    frameNumber++;
+                } else {
+                    // No effect, wait
+                    Thread.sleep(100);
+                    frameNumber = 0;
+                }
+                
+            } catch (InterruptedException e) {
+                logger.info("EffectRenderer interrupted");
+                break;
+            } catch (Exception e) {
+                logger.error("Error in rendering loop: {}", e.getMessage(), e);
+                // Continue despite errors
+            }
+        }
+        
+        logger.info("EffectRenderer thread stopped");
+        clearAllLEDs();
+    }
+    
+    /**
+     * Render a single frame
+     */
+    private void renderFrame(Effect effect, long frameNumber) throws InterruptedException {
+        int fps = effect.getFPS();
+        double timeSeconds = frameNumber / (double) fps;
+        long targetFrameTimeMs = 1000 / fps;
+        
+        long startTime = System.currentTimeMillis();
+        
+        // Render frame
+        Map<Integer, Color> pixels = effect.renderFrame(frameNumber, timeSeconds);
+        
+        // Clear all LEDs first
+        for (int i = 0; i < MAIN_LED_COUNT; i++) {
+            mainStrip.setPixel(i, 0, 0, 0);
+        }
+        for (int i = 0; i < SIDE_LED_COUNT; i++) {
+            sideStrip.setPixel(i, 0, 0, 0);
+        }
+        
+        // Apply pixels
+        for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
+            int index = entry.getKey();
+            Color color = entry.getValue();
+            
+            if (index < MAIN_LED_COUNT) {
+                mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
+            } else if (index < MAIN_LED_COUNT + SIDE_LED_COUNT) {
+                sideStrip.setPixel(index - MAIN_LED_COUNT, color.getRed(), color.getGreen(), color.getBlue());
+            }
+        }
+        
+        // Render to hardware
+        mainStrip.render();
+        sideStrip.render();
+        
+        // Sleep to maintain FPS
+        long elapsed = System.currentTimeMillis() - startTime;
+        long sleepTime = targetFrameTimeMs - elapsed;
+        
+        if (sleepTime > 0) {
+            Thread.sleep(sleepTime);
+        }
+        
+        // Log every 300 frames (reduce logging frequency)
+        if (frameNumber % 300 == 0) {
+            logger.debug("Frame {}, render: {}ms, LEDs: {}", frameNumber, elapsed, pixels.size());
+        }
+    }
+}

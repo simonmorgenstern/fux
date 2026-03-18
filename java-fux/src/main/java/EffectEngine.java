@@ -26,9 +26,26 @@ public class EffectEngine implements Runnable {
     private final Random random = new Random();
     
     // Available effects
-    private final List<String> availableEffects = List.of(
-        "radial_wave", "snake", "aurora"
-    );
+    private final List<String> availableEffects = new ArrayList<String>() {{
+        add("radial_wave");
+        add("rainbow_pulse");
+        add("sparkle");
+        add("fire");
+        add("breathing");
+        add("snake");
+        add("meteor_shower");
+        add("firework");
+        add("rain");
+        add("aurora");
+        add("bilateral_fill");
+        add("motion_blur");
+        add("gradient");
+        add("box_mirror");
+        add("eye_blink");
+        add("diamond_pulse");
+        add("box_wave");
+        add("outside_spin");
+    }};
     
     // Callback for state updates
     private StateUpdateCallback stateUpdateCallback = null;
@@ -130,15 +147,64 @@ public class EffectEngine implements Runnable {
             JsonObject params = effectDef.getAsJsonObject("parameters");
             
             // Create effect instance
-            if ("radial_wave".equals(algorithm)) {
-                currentEffect = new RadialWaveEffect();
-            } else if ("snake".equals(algorithm)) {
-                currentEffect = new SnakeEffect();
-            } else if ("aurora".equals(algorithm)) {
-                currentEffect = new AuroraEffect();
-            } else {
-                System.err.println("Unknown algorithm: " + algorithm);
-                return;
+            switch(algorithm) {
+                case "radial_wave":
+                    currentEffect = new RadialWaveEffect();
+                    break;
+                case "rainbow_pulse":
+                    currentEffect = new RainbowPulseEffect();
+                    break;
+                case "sparkle":
+                    currentEffect = new SparkleEffect();
+                    break;
+                case "fire":
+                    currentEffect = new FireEffect();
+                    break;
+                case "breathing":
+                    currentEffect = new BreathingEffect();
+                    break;
+                case "snake":
+                    currentEffect = new SnakeEffect();
+                    break;
+                case "meteor_shower":
+                    currentEffect = new MeteorShowerEffect();
+                    break;
+                case "firework":
+                    currentEffect = new FireworkEffect();
+                    break;
+                case "rain":
+                    currentEffect = new RainEffect();
+                    break;
+                case "aurora":
+                    currentEffect = new AuroraEffect();
+                    break;
+                case "bilateral_fill":
+                    currentEffect = new BilateralFillEffect();
+                    break;
+                case "motion_blur":
+                    currentEffect = new MotionBlurEffect();
+                    break;
+                case "gradient":
+                    currentEffect = new GradientEffect();
+                    break;
+                case "box_mirror":
+                    currentEffect = new BoxMirrorEffect();
+                    break;
+                case "eye_blink":
+                    currentEffect = new EyeBlinkEffect();
+                    break;
+                case "diamond_pulse":
+                    currentEffect = new DiamondPulseEffect();
+                    break;
+                case "box_wave":
+                    currentEffect = new BoxWaveEffect();
+                    break;
+                case "outside_spin":
+                    currentEffect = new OutsideSpinEffect();
+                    break;
+                default:
+                    System.err.println("Unknown algorithm: " + algorithm);
+                    return;
             }
             
             // Initialize effect
