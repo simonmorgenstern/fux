@@ -1,0 +1,13 @@
+{
+  "name": "Fire",
+  "description": "Flickering fire effect with realistic heat simulation",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "fire",
+  "parameters": {
+    "intensity": 0.8,
+    "cooling": 0.05,
+    "sparking": 0.3,
+    "fps": 30
+  }
+}

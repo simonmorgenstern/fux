@@ -1,0 +1,14 @@
+{
+  "name": "Sparkle",
+  "description": "Random LEDs sparkle like stars",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "sparkle",
+  "parameters": {
+    "density": 3,
+    "color_mode": "white",
+    "fade_frames": 15,
+    "brightness": 1.0,
+    "fps": 30
+  }
+}

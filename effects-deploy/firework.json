@@ -1,0 +1,11 @@
+{
+  "name": "Firework",
+  "description": "Rockets fly up and explode into colorful particle showers",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "firework",
+  "parameters": {
+    "max_rockets": 2,
+    "fps": 30
+  }
+}

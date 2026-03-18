@@ -1,0 +1,11 @@
+{
+  "algorithm": "bilateral_fill",
+  "parameters": {
+    "fill_speed": 50,
+    "brightness": 1.0,
+    "hold_time": 1000,
+    "fade_out_time": 500,
+    "fill_mode": "random",
+    "flip_inside_out": true
+  }
+}

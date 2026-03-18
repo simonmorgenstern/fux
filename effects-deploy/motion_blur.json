@@ -1,0 +1,9 @@
+{
+  "algorithm": "motion_blur",
+  "parameters": {
+    "speed": 30,
+    "pattern_type": "diagonal_stripes",
+    "flicker_rate": 3,
+    "fps": 60
+  }
+}

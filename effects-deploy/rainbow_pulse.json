@@ -1,0 +1,14 @@
+{
+  "name": "Rainbow Pulse",
+  "description": "All LEDs pulse through rainbow colors simultaneously",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "rainbow_pulse",
+  "parameters": {
+    "hue_rotation_speed": 1.0,
+    "pulse_frequency": 0.5,
+    "brightness_min": 0.2,
+    "brightness_max": 1.0,
+    "fps": 30
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "algorithm": "diamond_pulse",
+  "parameters": {
+    "speed": 1.0,
+    "fps": 30,
+    "color": [0, 200, 255]
+  }
+}

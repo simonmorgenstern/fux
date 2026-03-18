@@ -1,0 +1,11 @@
+{
+  "name": "Box Mirror",
+  "description": "Mirrors boxes across center",
+  "version": "1.0",
+  "type": "effect",
+  "algorithm": "box_mirror",
+  "parameters": {
+    "fps": 30,
+    "changeInterval": 60
+  }
+}

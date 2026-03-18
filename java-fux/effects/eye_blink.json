@@ -1,0 +1,7 @@
+{
+  "algorithm": "eye_blink",
+  "parameters": {
+    "speed": 1.5,
+    "fps": 20
+  }
+}

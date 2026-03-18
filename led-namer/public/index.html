@@ -31,23 +31,22 @@
         <main>
             <section class="led-selection">
                 <h2><i class="fas fa-sliders-h"></i> LED Selection</h2>
-                <div class="range-inputs">
-                    <div class="input-group">
-                        <label for="start">Start Index (0-387)</label>
-                        <input type="number" id="start" min="0" max="387" value="0">
-                    </div>
-                    <div class="input-group">
-                        <label for="end">End Index (0-387)</label>
-                        <input type="number" id="end" min="0" max="387" value="10">
-                    </div>
-                    <button id="add-range" class="btn secondary"><i class="fas fa-plus"></i> Add Range</button>
+                <div class="selection-toolbar">
+                    <div class="toolbar-title">Selection Mode:</div>
+                    <button id="mode-click" class="btn secondary active" data-mode="click"><i class="fas fa-mouse-pointer"></i> Click</button>
+                    <button id="mode-box" class="btn secondary" data-mode="box"><i class="fas fa-vector-square"></i> Box Select</button>
+                    <button id="mode-lasso" class="btn secondary" data-mode="lasso"><i class="fas fa-lasso"></i> Lasso</button>
+                    <button id="clear-selection" class="btn secondary"><i class="fas fa-trash-alt"></i> Clear</button>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="led-canvas"></canvas>
                 </div>
                 <div class="current-ranges">
-                    <h3>Selected Ranges</h3>
+                    <h3>Selected LEDs (<span id="selected-count">0</span>)</h3>
                     <ul id="range-list">
                         <!-- Ranges will be added here -->
                     </ul>
-                    <p id="no-ranges">No ranges added yet. Add a range above.</p>
+                    <p id="no-ranges">No LEDs selected yet. Click or drag on the canvas to select.</p>
                 </div>
             </section>
 
@@ -77,6 +76,7 @@
         </footer>
     </div>
 
+    <script src="canvas.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

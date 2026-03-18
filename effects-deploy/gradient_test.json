@@ -1,0 +1,11 @@
+{
+  "algorithm": "gradient",
+  "parameters": {
+    "gradient_axis": "horizontal",
+    "color_range": [240, 200, 160, 120],
+    "speed": 50,
+    "saturation": 0.8,
+    "brightness": 0.7,
+    "fps": 33
+  }
+}

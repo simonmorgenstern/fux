@@ -1,0 +1,15 @@
+{
+  "name": "Meteor Shower",
+  "description": "Shooting stars flying across the LEDs",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "meteor_shower",
+  "parameters": {
+    "meteor_count": 4,
+    "speed_min": 0.01,
+    "speed_max": 0.03,
+    "trail_length": 8,
+    "colors": ["white", "blue", "cyan"],
+    "fps": 30
+  }
+}

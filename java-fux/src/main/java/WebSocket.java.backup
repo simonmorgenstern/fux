@@ -1,0 +1,300 @@
+import com.github.mbelling.ws281x.LedStripType;
+import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
+
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+
+
+public class WebSocket extends WebSocketServer {
+    private ArrayList<ParsedFrame> parsedFrames;
+    private Gson gson;
+    private FrameParser frameParser;
+    private static Ws281xLedStrip fuxStrip = new Ws281xLedStrip(268, 18, 800000, 10, 100, 0, false, LedStripType.WS2811_STRIP_GRB, true);
+    private static Ws281xLedStrip sideStrip = new Ws281xLedStrip(120, 13, 800000, 10, 200, 1, false, LedStripType.WS2811_STRIP_GRB, true);
+    private static MusicMode musicModeRunner = new MusicMode(fuxStrip);
+    private static Thread musicModeThread;
+    private static EffectEngine effectEngine = new EffectEngine(fuxStrip, sideStrip);
+
+    public WebSocket(int port) throws UnknownHostException {
+        super(new InetSocketAddress(port));
+        this.gson = new Gson();
+        this.frameParser = new FrameParser();
+        this.parsedFrames = new ArrayList<>();
+        
+        // Set up state change callback for broadcasting
+        effectEngine.setStateChangeCallback(state -> {
+            broadcastStateUpdate(state);
+        });
+        
+        // Start effect engine in RANDOM mode by default
+        effectEngine.start();
+        
+        System.out.println("✓ WebSocket server initialized on port " + port);
+    }
+
+    @Override
+    public void onOpen(org.java_websocket.WebSocket webSocket, ClientHandshake clientHandshake) {
+        System.out.println("✓ Client connected: " + webSocket.getRemoteSocketAddress().getAddress().getHostAddress());
+        
+        // Send welcome message
+        webSocket.send("Welcome to fux LED control server!");
+        
+        // Send current state to new client
+        sendStateUpdate(webSocket, effectEngine.getCurrentState());
+    }
+
+    @Override
+    public void onClose(org.java_websocket.WebSocket webSocket, int code, String reason, boolean remote) {
+        System.out.println("✗ Client disconnected: " + webSocket.getRemoteSocketAddress());
+    }
+
+    @Override
+    public void onMessage(org.java_websocket.WebSocket webSocket, String message) {
+        System.out.println("← Received: " + message);
+        
+        try {
+            // Mode control commands
+            if (message.equals("MODE:RANDOM")) {
+                effectEngine.setMode(ControlMode.RANDOM);
+                System.out.println("✓ Mode set to RANDOM");
+                return;
+            }
+            
+            if (message.equals("MODE:QUEUE")) {
+                effectEngine.setMode(ControlMode.QUEUE);
+                System.out.println("✓ Mode set to QUEUE");
+                return;
+            }
+            
+            // Queue operations
+            if (message.startsWith("ADD_QUEUE:")) {
+                String effectName = message.substring(10).trim();
+                boolean added = effectEngine.addToQueue(effectName);
+                if (!added) {
+                    sendError(webSocket, "Failed to add effect '" + effectName + "' to queue. Queue may be full or effect unknown.");
+                }
+                return;
+            }
+            
+            if (message.equals("CLEAR_QUEUE")) {
+                effectEngine.clearQueue();
+                System.out.println("✓ Queue cleared");
+                return;
+            }
+            
+            // State query
+            if (message.equals("GET_STATE")) {
+                sendStateUpdate(webSocket, effectEngine.getCurrentState());
+                return;
+            }
+            
+            // Get available effects
+            if (message.equals("GET_EFFECTS")) {
+                sendAvailableEffects(webSocket);
+                return;
+            }
+            
+            // Legacy effect control (immediate playback)
+            if (message.startsWith("EFFECT:")) {
+                String effectName = message.substring(7).trim();
+                System.out.println("Loading effect: " + effectName);
+                effectEngine.loadEffect(effectName);
+                return;
+            }
+            
+            if (message.equals("STOP_EFFECT")) {
+                System.out.println("Stopping effect");
+                effectEngine.stop();
+                return;
+            }
+            
+            // Music mode
+            if (message.matches("musicModeOn:\\d+")) {
+                if (musicModeThread != null && musicModeThread.isAlive()) {
+                    System.out.println("✗ Music mode already running");
+                    return;
+                }
+                
+                System.out.println("✓ Starting music mode");
+                musicModeRunner.stopped = false;
+                musicModeThread = new Thread(musicModeRunner);
+                musicModeThread.start();
+                return;
+            }
+            
+            if (message.equals("musicModeOff")) {
+                stopMusicMode();
+                return;
+            }
+            
+            // Shutdown command
+            if (message.equals("STOP") || message.equals("SHUTDOWN")) {
+                System.out.println("⚠ Shutdown command received");
+                webSocket.send("Shutting down server...");
+                
+                // Clean shutdown sequence
+                new Thread(() -> {
+                    try {
+                        stopMusicMode();
+                        effectEngine.stop();
+                        
+                        // Clear all LEDs
+                        for (int i = 0; i < 268; i++) {
+                            fuxStrip.setPixel(i, 0, 0, 0);
+                            if (i < 120) {
+                                sideStrip.setPixel(i, 0, 0, 0);
+                            }
+                        }
+                        fuxStrip.render();
+                        sideStrip.render();
+                        
+                        Thread.sleep(500);
+                        
+                        System.out.println("✓ Server shutting down");
+                        this.stop(1000);
+                        System.exit(0);
+                    } catch (Exception e) {
+                        System.err.println("✗ Error during shutdown: " + e.getMessage());
+                        e.printStackTrace();
+                        System.exit(1);
+                    }
+                }).start();
+                return;
+            }
+            
+            // Legacy frame-based animation
+            if (message.matches("start:\\d+")) {
+                for (ParsedFrame frame: this.parsedFrames) {
+                    int[][] changes = frame.getParsedChanges();
+                    for(int index = 0; index < changes.length; index ++) {
+                       fuxStrip.setPixel(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
+                    }
+                    try {
+                        Thread.sleep(frame.getDuration());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    fuxStrip.render();
+                }
+                this.parsedFrames.clear();
+                return;
+            }
+            
+            // Parse frame data (legacy)
+            ParsedFrame parsedFrame = frameParser.getParsedFrame(message);
+            this.parsedFrames.add(parsedFrame);
+            
+        } catch (Exception e) {
+            System.err.println("✗ Error processing message: " + e.getMessage());
+            e.printStackTrace();
+            sendError(webSocket, "Error processing command: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Broadcast state update to all connected clients
+     */
+    private void broadcastStateUpdate(EffectEngine.StateUpdate state) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "STATE");
+        json.addProperty("mode", state.mode.name());
+        json.addProperty("currentEffect", state.currentEffect);
+        json.add("queue", gson.toJsonTree(state.queue));
+        json.addProperty("queueCapacity", state.queueCapacity);
+        json.addProperty("timestamp", state.timestamp);
+        
+        String message = gson.toJson(json);
+        this.broadcast(message);
+        System.out.println("→ Broadcasted state: mode=" + state.mode + ", current=" + state.currentEffect + ", queue=" + state.queue.size());
+    }
+    
+    /**
+     * Send state update to a specific client
+     */
+    private void sendStateUpdate(org.java_websocket.WebSocket webSocket, EffectEngine.StateUpdate state) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "STATE");
+        json.addProperty("mode", state.mode.name());
+        json.addProperty("currentEffect", state.currentEffect);
+        json.add("queue", gson.toJsonTree(state.queue));
+        json.addProperty("queueCapacity", state.queueCapacity);
+        json.addProperty("timestamp", state.timestamp);
+        
+        String message = gson.toJson(json);
+        webSocket.send(message);
+    }
+    
+    /**
+     * Send available effects list to client
+     */
+    private void sendAvailableEffects(org.java_websocket.WebSocket webSocket) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "EFFECTS_LIST");
+        json.add("effects", gson.toJsonTree(effectEngine.getAvailableEffects()));
+        json.addProperty("timestamp", System.currentTimeMillis());
+        
+        String message = gson.toJson(json);
+        webSocket.send(message);
+        System.out.println("→ Sent effects list to client");
+    }
+    
+    /**
+     * Send error message to client
+     */
+    private void sendError(org.java_websocket.WebSocket webSocket, String errorMessage) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "ERROR");
+        json.addProperty("message", errorMessage);
+        json.addProperty("timestamp", System.currentTimeMillis());
+        
+        String message = gson.toJson(json);
+        webSocket.send(message);
+        System.err.println("→ Sent error to client: " + errorMessage);
+    }
+
+    private void stopMusicMode() {
+        if (musicModeThread == null || !musicModeThread.isAlive()) {
+            return;
+        }
+        
+        System.out.println("✓ Stopping music mode");
+        musicModeRunner.stopped = true;
+        musicModeThread.interrupt();
+        
+        // Clear LEDs
+        for (int i = 0; i < 268; i++) {
+            fuxStrip.setPixel(i, 0, 0, 0);
+            if (i < 120) {
+                sideStrip.setPixel(i, 0, 0, 0);
+            }
+        }
+        fuxStrip.render();
+        sideStrip.render();
+    }
+
+    @Override
+    public void onError(org.java_websocket.WebSocket webSocket, Exception error) {
+        System.err.println("✗ WebSocket error: " + error.getMessage());
+        error.printStackTrace();
+        
+        if (webSocket != null) {
+            try {
+                sendError(webSocket, "Server error: " + error.getMessage());
+            } catch (Exception e) {
+                // Ignore if we can't send error
+            }
+        }
+    }
+
+    @Override
+    public void onStart() {
+        System.out.println("✓ WebSocket server started!");
+        setConnectionLostTimeout(10);
+        System.out.println("✓ Effect Engine running in " + effectEngine.getMode() + " mode");
+    }
+}

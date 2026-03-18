@@ -1,0 +1,6 @@
+{
+  "effect": "BoxMirror",
+  "parameters": {
+    "changeInterval": 60
+  }
+}

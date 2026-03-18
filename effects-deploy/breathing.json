@@ -1,0 +1,14 @@
+{
+  "name": "Breathing",
+  "description": "Gentle breathing effect - all LEDs pulse like a living organism",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "breathing",
+  "parameters": {
+    "color": [0, 100, 255],
+    "breath_rate": 12,
+    "min_brightness": 0.1,
+    "max_brightness": 1.0,
+    "fps": 30
+  }
+}

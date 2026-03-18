@@ -1,0 +1,7 @@
+{
+  "algorithm": "box_wave",
+  "parameters": {
+    "speed": 1.2,
+    "fps": 25
+  }
+}

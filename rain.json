@@ -1,0 +1,15 @@
+{
+  "name": "Rain",
+  "description": "Blue raindrops falling from top to bottom",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "rain",
+  "parameters": {
+    "drop_count": 8,
+    "speed_min": 2.0,
+    "speed_max": 4.0,
+    "trail_length": 6,
+    "colors": ["blue", "cyan", "light_blue"],
+    "fps": 30
+  }
+}
