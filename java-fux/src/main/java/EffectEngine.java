@@ -4,6 +4,10 @@ import com.google.gson.JsonObject;
 import java.awt.Color;
 import java.io.FileReader;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Random;
 
 public class EffectEngine implements Runnable {
     private Effect currentEffect;
@@ -13,6 +17,27 @@ public class EffectEngine implements Runnable {
     private Ws281xLedStrip sideStrip;
     private PixelCoordinates coordinates;
     
+    // Queue management
+    private final LinkedBlockingQueue<String> effectQueue = new LinkedBlockingQueue<>();
+    private final int queueCapacity = 50;
+    private ControlMode mode = ControlMode.RANDOM;
+    private long effectStartTime = 0;
+    private final int minDisplaySeconds = 2;
+    private final Random random = new Random();
+    
+    // Available effects
+    private final List<String> availableEffects = List.of(
+        "radial_wave", "snake", "aurora"
+    );
+    
+    // Callback for state updates
+    private StateUpdateCallback stateUpdateCallback = null;
+    
+    public interface StateUpdateCallback {
+        void broadcastState(StateMessage state);
+        void broadcastError(String message);
+    }
+    
     public EffectEngine(Ws281xLedStrip mainStrip, Ws281xLedStrip sideStrip) {
         this.mainStrip = mainStrip;
         this.sideStrip = sideStrip;
@@ -20,7 +45,6 @@ public class EffectEngine implements Runnable {
         
         // Load pixel coordinates
         String coordsPath = "/home/pi/fux/assets/pixelCoordinates.json";
-        // Try alternate path if first doesn't exist
         try {
             this.coordinates = new PixelCoordinates(coordsPath);
         } catch (Exception e) {
@@ -34,14 +58,67 @@ public class EffectEngine implements Runnable {
         }
     }
     
-    public void loadEffect(String effectName) {
+    public void setStateUpdateCallback(StateUpdateCallback callback) {
+        this.stateUpdateCallback = callback;
+    }
+    
+    public void setMode(ControlMode mode) {
+        this.mode = mode;
+        System.out.println("Mode changed to " + mode);
+        broadcastState();
+    }
+    
+    public void addToQueue(String effectName) {
+        if (!availableEffects.contains(effectName)) {
+            broadcastError("Unknown effect: " + effectName);
+            return;
+        }
+        if (effectQueue.size() >= queueCapacity) {
+            broadcastError("Queue is full (capacity: " + queueCapacity + ")");
+            return;
+        }
+        effectQueue.offer(effectName);
+        System.out.println("Added effect '" + effectName + "' to queue (size: " + effectQueue.size() + ")");
+        broadcastState();
+    }
+    
+    public void clearQueue() {
+        effectQueue.clear();
+        System.out.println("Queue cleared");
+        broadcastState();
+    }
+    
+    public String getCurrentEffect() {
+        String name = currentEffect != null ? currentEffect.getName() : null;
+        return name;
+    }
+    
+    public ControlMode getMode() {
+        return mode;
+    }
+    
+    public List<String> getQueueSnapshot() {
+        return new ArrayList<>(effectQueue);
+    }
+    
+    public int getQueueCapacity() {
+        return queueCapacity;
+    }
+    
+    public Integer getRemainingSeconds() {
+        if (currentEffect == null || effectStartTime == 0) {
+            return null;
+        }
+        long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
+        int remaining = minDisplaySeconds - (int) elapsedSeconds;
+        return remaining > 0 ? remaining : 0;
+    }
+    
+    private void loadEffect(String effectName) {
         if (coordinates == null) {
             System.err.println("Cannot load effect: coordinates not loaded");
             return;
         }
-        
-        // Stop current effect if running
-        stop();
         
         try {
             // Load effect definition
@@ -55,22 +132,8 @@ public class EffectEngine implements Runnable {
             // Create effect instance
             if ("radial_wave".equals(algorithm)) {
                 currentEffect = new RadialWaveEffect();
-            } else if ("rainbow_pulse".equals(algorithm)) {
-                currentEffect = new RainbowPulseEffect();
-            } else if ("sparkle".equals(algorithm)) {
-                currentEffect = new SparkleEffect();
-            } else if ("fire".equals(algorithm)) {
-                currentEffect = new FireEffect();
-            } else if ("breathing".equals(algorithm)) {
-                currentEffect = new BreathingEffect();
             } else if ("snake".equals(algorithm)) {
                 currentEffect = new SnakeEffect();
-            } else if ("meteor_shower".equals(algorithm)) {
-                currentEffect = new MeteorShowerEffect();
-            } else if ("firework".equals(algorithm)) {
-                currentEffect = new FireworkEffect();
-            } else if ("rain".equals(algorithm)) {
-                currentEffect = new RainEffect();
             } else if ("aurora".equals(algorithm)) {
                 currentEffect = new AuroraEffect();
             } else {
@@ -80,9 +143,7 @@ public class EffectEngine implements Runnable {
             
             // Initialize effect
             currentEffect.initialize(params, coordinates);
-            
-            // Start rendering
-            start();
+            effectStartTime = System.currentTimeMillis();
             
             System.out.println("Effect loaded: " + currentEffect.getName());
         } catch (Exception e) {
@@ -128,69 +189,123 @@ public class EffectEngine implements Runnable {
     
     @Override
     public void run() {
+        System.out.println("EffectEngine thread started");
+        
+        while (running) {
+            try {
+                // If we have a current effect, ensure min display time before switching
+                if (currentEffect != null) {
+                    long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
+                    if (elapsedSeconds < minDisplaySeconds) {
+                        // Render current effect
+                        renderFrame();
+                        Thread.sleep(100);
+                        continue;
+                    }
+                }
+                
+                // Determine next effect
+                String nextEffect = null;
+                if (mode == ControlMode.QUEUE) {
+                    // Block until an effect is available (with timeout to check running)
+                    nextEffect = effectQueue.poll(1, java.util.concurrent.TimeUnit.SECONDS);
+                } else { // RANDOM mode
+                    // Pick a random effect
+                    nextEffect = availableEffects.get(random.nextInt(availableEffects.size()));
+                }
+                
+                if (nextEffect != null) {
+                    // Load the effect
+                    loadEffect(nextEffect);
+                    broadcastState();
+                }
+                
+                // Render current effect
+                renderFrame();
+                
+                // Small sleep to avoid busy loop
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                System.err.println("Error in EffectEngine loop: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        System.out.println("EffectEngine thread terminated");
+        clearAllLEDs();
+    }
+    
+    private void renderFrame() {
         if (currentEffect == null) {
-            System.err.println("No effect loaded");
             return;
         }
         
         long frameNumber = 0;
         int fps = currentEffect.getFPS();
         long targetFrameTimeMs = 1000 / fps;
+        long startTime = System.currentTimeMillis();
         
-        System.out.println("Effect rendering started @ " + fps + " FPS");
+        // Render frame
+        double timeSeconds = frameNumber / (double) fps;
+        Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
         
-        while (running) {
-            long startTime = System.currentTimeMillis();
+        // Clear all LEDs first
+        for (int i = 0; i < 268; i++) {
+            mainStrip.setPixel(i, 0, 0, 0);
+        }
+        for (int i = 0; i < 120; i++) {
+            sideStrip.setPixel(i, 0, 0, 0);
+        }
+        
+        // Apply pixels
+        for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
+            int index = entry.getKey();
+            Color color = entry.getValue();
             
-            // Render frame
-            double timeSeconds = frameNumber / (double) fps;
-            Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
-            
-            // Clear all LEDs first
-            for (int i = 0; i < 268; i++) {
-                mainStrip.setPixel(i, 0, 0, 0);
-            }
-            for (int i = 0; i < 120; i++) {
-                sideStrip.setPixel(i, 0, 0, 0);
-            }
-            
-            // Apply pixels
-            for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
-                int index = entry.getKey();
-                Color color = entry.getValue();
-                
-                if (index < 268) {
-                    mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
-                } else if (index < 388) {
-                    sideStrip.setPixel(index - 268, color.getRed(), color.getGreen(), color.getBlue());
-                }
-            }
-            
-            // Render to hardware
-            mainStrip.render();
-            sideStrip.render();
-            
-            // Sleep to maintain FPS
-            long elapsed = System.currentTimeMillis() - startTime;
-            long sleepTime = targetFrameTimeMs - elapsed;
-            
-            if (sleepTime > 0) {
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-            
-            frameNumber++;
-            
-            // Log every 100 frames
-            if (frameNumber % 100 == 0) {
-                System.out.println("Frame " + frameNumber + ", render time: " + elapsed + "ms, LEDs: " + pixels.size());
+            if (index < 268) {
+                mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
+            } else if (index < 388) {
+                sideStrip.setPixel(index - 268, color.getRed(), color.getGreen(), color.getBlue());
             }
         }
         
-        System.out.println("Effect rendering stopped");
-        clearAllLEDs();
+        // Render to hardware
+        mainStrip.render();
+        sideStrip.render();
+        
+        // Sleep to maintain FPS
+        long elapsed = System.currentTimeMillis() - startTime;
+        long sleepTime = targetFrameTimeMs - elapsed;
+        
+        if (sleepTime > 0) {
+            try {
+                Thread.sleep(sleepTime);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+        }
+    }
+    
+    private void broadcastState() {
+        if (stateUpdateCallback != null) {
+            StateMessage state = new StateMessage(
+                mode.toString(),
+                getCurrentEffect(),
+                getQueueSnapshot(),
+                queueCapacity,
+                System.currentTimeMillis(),
+                getRemainingSeconds()
+            );
+            stateUpdateCallback.broadcastState(state);
+        }
+    }
+    
+    private void broadcastError(String message) {
+        if (stateUpdateCallback != null) {
+            stateUpdateCallback.broadcastError(message);
+        }
     }
 }
