@@ -2,7 +2,9 @@
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/OutsideSpinEffect.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/SparkleEffect.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/ControlMode.java
+/home/simon/.openclaw/workspace/fux/java-fux/src/main/java/GifEncoder.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/GradientEffect.java
+/home/simon/.openclaw/workspace/fux/java-fux/src/main/java/PreviewHttpServer.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/ParsedFrame.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/AuroraEffect.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/MotionBlurEffect.java
@@ -11,7 +13,9 @@
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/AnimationParser.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/PixelCoordinate.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/RainbowPulseEffect.java
+/home/simon/.openclaw/workspace/fux/java-fux/src/main/java/PreviewHttpHandler.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/BreathingEffect.java
+/home/simon/.openclaw/workspace/fux/java-fux/src/main/java/PreviewRenderer.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/FireworkEffect.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/Fux.java
 /home/simon/.openclaw/workspace/fux/java-fux/src/main/java/BoxWaveEffect.java

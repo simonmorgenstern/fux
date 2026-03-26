@@ -1,0 +1,50 @@
+[
+  {
+    "name": "boxes1",
+    "ranges": [
+      { "start": 0, "end": 33 }
+    ]
+  },
+  {
+    "name": "boxes2",
+    "ranges": [
+      { "start": 34, "end": 67 }
+    ]
+  },
+  {
+    "name": "boxes3",
+    "ranges": [
+      { "start": 68, "end": 101 }
+    ]
+  },
+  {
+    "name": "boxes4",
+    "ranges": [
+      { "start": 102, "end": 135 }
+    ]
+  },
+  {
+    "name": "boxes5",
+    "ranges": [
+      { "start": 136, "end": 169 }
+    ]
+  },
+  {
+    "name": "boxes6",
+    "ranges": [
+      { "start": 170, "end": 203 }
+    ]
+  },
+  {
+    "name": "boxes7",
+    "ranges": [
+      { "start": 204, "end": 237 }
+    ]
+  },
+  {
+    "name": "boxes8",
+    "ranges": [
+      { "start": 238, "end": 267 }
+    ]
+  }
+]

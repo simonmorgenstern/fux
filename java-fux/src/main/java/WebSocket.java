@@ -54,25 +54,31 @@ public class WebSocket extends WebSocketServer {
         this.frameParser = new FrameParser();
         this.parsedFrames = new ArrayList<>();
         
-        // Set up state change callbacks for effect engine
-        effectEngine.setStateUpdateCallback(new EffectEngine.StateUpdateCallback() {
-            @Override
-            public void broadcastState(StateMessage state) {
-                String json = gson.toJson(state);
-                broadcast(json);
-                System.out.println("Broadcasted state: mode=" + state.getMode() + 
-                    ", current=" + state.getCurrentEffect() + 
-                    ", queue_size=" + state.getQueue().size());
-            }
+        // Only start effect engine if hardware is available
+        if (isHardwareAvailable) {
+            // Set up state change callbacks for effect engine
+            effectEngine.setStateUpdateCallback(new EffectEngine.StateUpdateCallback() {
+                @Override
+                public void broadcastState(StateMessage state) {
+                    String json = gson.toJson(state);
+                    broadcast(json);
+                    System.out.println("Broadcasted state: mode=" + state.getMode() + 
+                        ", current=" + state.getCurrentEffect() + 
+                        ", queue_size=" + state.getQueue().size());
+                }
+                
+                @Override
+                public void broadcastError(String message) {
+                    sendErrorToAll(message);
+                }
+            });
             
-            @Override
-            public void broadcastError(String message) {
-                sendErrorToAll(message);
-            }
-        });
-        
-        // Start effect engine
-        effectEngine.start();
+            // Start effect engine
+            effectEngine.start();
+            System.out.println("EffectEngine started (hardware mode)");
+        } else {
+            System.out.println("EffectEngine disabled (preview-only mode)");
+        }
         
         // Start preview HTTP server
         try {
@@ -92,16 +98,20 @@ public class WebSocket extends WebSocketServer {
         System.out.println("Client connected: " + clientAddr);
         webSocket.send("Welcome to fux LED control server!");
         
-        // Send current state to new client
-        StateMessage state = new StateMessage(
-            effectEngine.getMode().toString(),
-            effectEngine.getCurrentEffect(),
-            effectEngine.getQueueSnapshot(),
-            effectEngine.getQueueCapacity(),
-            System.currentTimeMillis(),
-            effectEngine.getRemainingSeconds()
-        );
-        webSocket.send(gson.toJson(state));
+        // Send current state to new client (only if hardware mode)
+        if (isHardwareAvailable && effectEngine != null) {
+            StateMessage state = new StateMessage(
+                effectEngine.getMode().toString(),
+                effectEngine.getCurrentEffect(),
+                effectEngine.getQueueSnapshot(),
+                effectEngine.getQueueCapacity(),
+                System.currentTimeMillis(),
+                effectEngine.getRemainingSeconds()
+            );
+            webSocket.send(gson.toJson(state));
+        } else {
+            webSocket.send("{\"mode\":\"preview_only\",\"message\":\"Running in preview-only mode. Use /api/preview endpoint.\"}");
+        }
     }
 
     @Override
@@ -114,6 +124,15 @@ public class WebSocket extends WebSocketServer {
         System.out.println("Received: " + message);
         
         try {
+            // Check if effect engine commands are available
+            if (!isHardwareAvailable && 
+                (message.startsWith("MODE:") || message.startsWith("ADD_QUEUE:") || 
+                 message.equals("CLEAR_QUEUE") || message.equals("GET_STATE") || 
+                 message.equals("STOP_EFFECT"))) {
+                webSocket.send("{\"error\":\"Command not available in preview-only mode. Use /api/preview endpoint instead.\"}");
+                return;
+            }
+            
             // Mode control commands
             if (message.equals("MODE:RANDOM")) {
                 effectEngine.setMode(ControlMode.RANDOM);
@@ -162,6 +181,10 @@ public class WebSocket extends WebSocketServer {
             }
 
             if (message.matches("musicModeOn:\\d+")) {
+                if (!isHardwareAvailable) {
+                    webSocket.send("{\"error\":\"Music mode not available in preview-only mode.\"}");
+                    return;
+                }
                 if (musicModeThread != null && musicModeThread.isAlive()) return; // guard clause
 
                 System.out.println("start music mode");
@@ -171,7 +194,9 @@ public class WebSocket extends WebSocketServer {
                 return;
             } 
             else if (message.matches("musicModeOff")) {
-                stopMusicMode();
+                if (isHardwareAvailable) {
+                    stopMusicMode();
+                }
                 return;
             } 
             else if (message.equals("STOP") || message.equals("SHUTDOWN")) {
