@@ -9,6 +9,7 @@
     "wave_spacing": 50,
     "wave_width": 30,
     "wave_speed": 5.0,
+    "colors_hsv": [0, 60, 120, 180, 240, 300],
     "brightness": 1.0
   }
 }

@@ -9,6 +9,7 @@
     "drop_count": 10,
     "speed_min": 2.0,
     "speed_max": 5.0,
-    "trail_length": 15
+    "trail_length": 15,
+    "colors": [[100, 150, 255], [150, 180, 255], [200, 220, 255]]
   }
 }

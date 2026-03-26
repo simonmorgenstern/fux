@@ -8,6 +8,7 @@
   "parameters": {
     "meteor_count": 3,
     "meteor_speed": 20.0,
-    "meteor_trail_length": 25
+    "meteor_trail_length": 25,
+    "colors": [[255, 100, 0], [255, 200, 0], [255, 150, 0]]
   }
 }
