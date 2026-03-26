@@ -142,10 +142,12 @@ public class EffectEngine implements Runnable {
             Gson gson = new Gson();
             JsonObject effectDef = null;
             
-            // Try multiple paths: deployed -> classpath -> current directory
+            // Try multiple paths: deployed -> current dir -> effects subdir -> classpath
             String[] pathsToTry = {
                 "/home/pi/fux-effects/" + effectName + ".json",
-                effectName + ".json"
+                effectName + ".json",
+                "effects/" + effectName + ".json",
+                "../effects/" + effectName + ".json"
             };
             
             // Try file system paths first
@@ -159,21 +161,25 @@ public class EffectEngine implements Runnable {
                 }
             }
             
-            // Try classpath resource as fallback
+            // Try classpath resources as fallback
             if (effectDef == null) {
-                try {
-                    java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("animations/" + effectName + ".json");
-                    if (is != null) {
-                        effectDef = gson.fromJson(new java.io.InputStreamReader(is), JsonObject.class);
-                        System.out.println("Loaded effect from classpath: animations/" + effectName + ".json");
+                String[] classpathPaths = {"animations/", "effects/"};
+                for (String classpathDir : classpathPaths) {
+                    try {
+                        java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(classpathDir + effectName + ".json");
+                        if (is != null) {
+                            effectDef = gson.fromJson(new java.io.InputStreamReader(is), JsonObject.class);
+                            System.out.println("Loaded effect from classpath: " + classpathDir + effectName + ".json");
+                            break;
+                        }
+                    } catch (Exception e) {
+                        // Try next classpath path
                     }
-                } catch (Exception e) {
-                    // Fall through to error handling
                 }
             }
             
             if (effectDef == null) {
-                throw new Exception("Could not find effect definition for: " + effectName + " (tried /home/pi/fux-effects/, current dir, and classpath)");
+                throw new Exception("Could not find effect definition for: " + effectName + " (tried /home/pi/fux-effects/, current dir, effects/ subdir, and classpath)");
             }
             
             String algorithm = effectDef.get("algorithm").getAsString();
