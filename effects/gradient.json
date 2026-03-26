@@ -1,0 +1,12 @@
+{
+  "name": "Gradient",
+  "description": "Effect: gradient",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "gradient",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

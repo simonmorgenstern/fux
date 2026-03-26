@@ -1,0 +1,12 @@
+{
+  "name": "Diamond Pulse",
+  "description": "Effect: diamond_pulse",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "diamond_pulse",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

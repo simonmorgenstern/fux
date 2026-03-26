@@ -1,0 +1,14 @@
+{
+  "name": "Breathing",
+  "description": "Smooth breathing effect with gradual brightness changes",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "breathing",
+  "fps": 30,
+  "parameters": {
+    "speed": 2.0,
+    "min_brightness": 0.2,
+    "max_brightness": 1.0,
+    "color": [100, 150, 255]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Fire",
+  "description": "Fire-like flickering effect",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "fire",
+  "fps": 30,
+  "parameters": {
+    "intensity": 1.0,
+    "speed": 5,
+    "brightness": 0.8
+  }
+}

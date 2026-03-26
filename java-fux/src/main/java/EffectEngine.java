@@ -138,10 +138,43 @@ public class EffectEngine implements Runnable {
         }
         
         try {
-            // Load effect definition
-            String effectPath = "/home/pi/fux-effects/" + effectName + ".json";
+            // Load effect definition with fallbacks
             Gson gson = new Gson();
-            JsonObject effectDef = gson.fromJson(new FileReader(effectPath), JsonObject.class);
+            JsonObject effectDef = null;
+            
+            // Try multiple paths: deployed -> classpath -> current directory
+            String[] pathsToTry = {
+                "/home/pi/fux-effects/" + effectName + ".json",
+                effectName + ".json"
+            };
+            
+            // Try file system paths first
+            for (String path : pathsToTry) {
+                try {
+                    effectDef = gson.fromJson(new FileReader(path), JsonObject.class);
+                    System.out.println("Loaded effect from: " + path);
+                    break;
+                } catch (java.io.FileNotFoundException e) {
+                    // Try next path
+                }
+            }
+            
+            // Try classpath resource as fallback
+            if (effectDef == null) {
+                try {
+                    java.io.InputStream is = getClass().getClassLoader().getResourceAsStream("animations/" + effectName + ".json");
+                    if (is != null) {
+                        effectDef = gson.fromJson(new java.io.InputStreamReader(is), JsonObject.class);
+                        System.out.println("Loaded effect from classpath: animations/" + effectName + ".json");
+                    }
+                } catch (Exception e) {
+                    // Fall through to error handling
+                }
+            }
+            
+            if (effectDef == null) {
+                throw new Exception("Could not find effect definition for: " + effectName + " (tried /home/pi/fux-effects/, current dir, and classpath)");
+            }
             
             String algorithm = effectDef.get("algorithm").getAsString();
             JsonObject params = effectDef.getAsJsonObject("parameters");

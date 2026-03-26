@@ -1,0 +1,12 @@
+{
+  "name": "Aurora",
+  "description": "Effect: aurora",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "aurora",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

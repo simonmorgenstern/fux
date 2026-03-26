@@ -3,7 +3,7 @@
   "description": "All LEDs pulse through rainbow colors simultaneously",
   "version": "1.0",
   "type": "procedural",
-  "algorithm": "color_pulse",
+  "algorithm": "rainbow_pulse",
   "fps": 30,
   "parameters": {
     "speed": 2.0,

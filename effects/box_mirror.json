@@ -1,0 +1,12 @@
+{
+  "name": "Box Mirror",
+  "description": "Effect: box_mirror",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "box_mirror",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

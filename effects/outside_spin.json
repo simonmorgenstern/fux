@@ -1,0 +1,12 @@
+{
+  "name": "Outside Spin",
+  "description": "Effect: outside_spin",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "outside_spin",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

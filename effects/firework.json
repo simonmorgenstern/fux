@@ -1,0 +1,12 @@
+{
+  "name": "Firework",
+  "description": "Effect: firework",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "firework",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

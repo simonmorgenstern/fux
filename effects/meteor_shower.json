@@ -1,0 +1,14 @@
+{
+  "name": "Meteor Shower",
+  "description": "Meteors streaking across the display",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "meteor_shower",
+  "fps": 30,
+  "parameters": {
+    "meteor_length": 10,
+    "meteor_speed": 8,
+    "density": 5,
+    "color": [255, 150, 0]
+  }
+}

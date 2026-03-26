@@ -1,0 +1,14 @@
+{
+  "name": "Sparkle",
+  "description": "Random pixels light up and fade",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "sparkle",
+  "fps": 30,
+  "parameters": {
+    "density": 0.1,
+    "speed": 50,
+    "brightness": 1.0,
+    "color": [255, 255, 255]
+  }
+}

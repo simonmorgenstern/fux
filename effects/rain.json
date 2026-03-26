@@ -1,0 +1,12 @@
+{
+  "name": "Rain",
+  "description": "Effect: rain",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "rain",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Snake",
+  "description": "Snake-like pattern moving across LEDs",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "snake",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "length": 20,
+    "color": [0, 255, 100]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Bilateral Fill",
+  "description": "Effect: bilateral_fill",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "bilateral_fill",
+  "fps": 30,
+  "parameters": {
+    "speed": 5,
+    "brightness": 1.0
+  }
+}
