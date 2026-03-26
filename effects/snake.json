@@ -6,8 +6,8 @@
   "algorithm": "snake",
   "fps": 30,
   "parameters": {
-    "speed": 5,
-    "length": 20,
+    "snake_speed": 5,
+    "snake_length": 20,
     "color": [0, 255, 100]
   }
 }

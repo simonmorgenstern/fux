@@ -1,12 +1,14 @@
 {
   "name": "Gradient",
-  "description": "Effect: gradient",
+  "description": "Moving gradient effect",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "gradient",
-  "fps": 30,
+  "fps": 33,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "gradient_axis": "horizontal",
+    "speed": 20.0,
+    "saturation": 1.0,
+    "brightness": 0.8
   }
 }

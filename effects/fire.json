@@ -7,7 +7,7 @@
   "fps": 30,
   "parameters": {
     "intensity": 1.0,
-    "speed": 5,
-    "brightness": 0.8
+    "cooling": 55,
+    "sparking": 120
   }
 }

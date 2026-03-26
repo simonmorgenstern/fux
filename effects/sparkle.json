@@ -6,9 +6,9 @@
   "algorithm": "sparkle",
   "fps": 30,
   "parameters": {
-    "density": 0.1,
-    "speed": 50,
-    "brightness": 1.0,
-    "color": [255, 255, 255]
+    "density": 15,
+    "color_mode": "rainbow",
+    "fade_frames": 30,
+    "brightness": 1.0
   }
 }

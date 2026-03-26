@@ -6,9 +6,8 @@
   "algorithm": "meteor_shower",
   "fps": 30,
   "parameters": {
-    "meteor_length": 10,
-    "meteor_speed": 8,
-    "density": 5,
-    "color": [255, 150, 0]
+    "meteor_count": 3,
+    "meteor_speed": 20.0,
+    "meteor_trail_length": 25
   }
 }

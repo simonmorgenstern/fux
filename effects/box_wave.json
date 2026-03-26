@@ -1,12 +1,11 @@
 {
   "name": "Box Wave",
-  "description": "Effect: box_wave",
+  "description": "Wave effect across boxes",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "box_wave",
-  "fps": 30,
+  "fps": 25,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "speed": 1.0
   }
 }

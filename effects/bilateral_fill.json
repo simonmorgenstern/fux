@@ -1,12 +1,16 @@
 {
   "name": "Bilateral Fill",
-  "description": "Effect: bilateral_fill",
+  "description": "Fill pattern from inside and outside simultaneously",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "bilateral_fill",
-  "fps": 30,
+  "fps": 33,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "fill_speed": 5.0,
+    "brightness": 1.0,
+    "hold_time": 500,
+    "fade_out_time": 800,
+    "fill_mode": "rainbow",
+    "flip_inside_out": false
   }
 }

@@ -357,7 +357,10 @@ public class EffectEngine implements Runnable {
         long targetFrameTimeMs = 1000 / fps;
         long startTime = System.currentTimeMillis();
         
-        // Render frame
+        // Render frame (guard against fps being 0)
+        if (fps <= 0) {
+            fps = 30; // Default fallback FPS
+        }
         double timeSeconds = frameNumber / (double) fps;
         Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
         

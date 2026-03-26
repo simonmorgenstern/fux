@@ -1,12 +1,14 @@
 {
   "name": "Rain",
-  "description": "Effect: rain",
+  "description": "Rain drops falling down the display",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "rain",
   "fps": 30,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "drop_count": 10,
+    "speed_min": 2.0,
+    "speed_max": 5.0,
+    "trail_length": 15
   }
 }

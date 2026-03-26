@@ -1,12 +1,11 @@
 {
   "name": "Eye Blink",
-  "description": "Effect: eye_blink",
+  "description": "Blinking eye effect",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "eye_blink",
-  "fps": 30,
+  "fps": 20,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "speed": 1.0
   }
 }

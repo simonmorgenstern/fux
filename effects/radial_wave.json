@@ -1,0 +1,14 @@
+{
+  "name": "Radial Wave",
+  "description": "Continuous waves emanating from center",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "radial_wave",
+  "fps": 33,
+  "parameters": {
+    "wave_spacing": 50,
+    "wave_width": 30,
+    "wave_speed": 5.0,
+    "brightness": 1.0
+  }
+}

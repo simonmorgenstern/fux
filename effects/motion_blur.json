@@ -1,12 +1,12 @@
 {
   "name": "Motion Blur",
-  "description": "Effect: motion_blur",
+  "description": "Motion blur effect",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "motion_blur",
   "fps": 30,
   "parameters": {
-    "speed": 5,
-    "brightness": 1.0
+    "speed": 5.0,
+    "blur_distance": 10
   }
 }
