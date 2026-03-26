@@ -1,6 +1,7 @@
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,59 @@ public class PixelCoordinates {
     
     public PixelCoordinates(String jsonFilePath) {
         loadFromJson(jsonFilePath);
+        calculateCenter();
+        calculateDistances();
+    }
+    
+    /**
+     * Load coordinates from file with multiple path fallbacks
+     */
+    public static PixelCoordinates loadWithFallback() {
+        String[] pathsToTry = {
+            "/home/pi/fux/assets/pixelCoordinates.json",
+            "pixelCoordinates.json",
+            "assets/pixelCoordinates.json",
+            "../assets/pixelCoordinates.json"
+        };
+        
+        // Try file system paths first
+        for (String path : pathsToTry) {
+            try {
+                return new PixelCoordinates(path);
+            } catch (Exception e) {
+                // Try next path
+            }
+        }
+        
+        // Try classpath as last resort
+        try {
+            Gson gson = new Gson();
+            Type listType = new TypeToken<ArrayList<Map<String, Object>>>(){}.getType();
+            java.io.InputStream is = PixelCoordinates.class.getClassLoader().getResourceAsStream("pixelCoordinates.json");
+            if (is != null) {
+                List<Map<String, Object>> rawCoords = gson.fromJson(new InputStreamReader(is), listType);
+                PixelCoordinates coords = new PixelCoordinates(new ArrayList<>(), rawCoords);
+                System.out.println("Loaded coordinates from classpath: pixelCoordinates.json");
+                return coords;
+            }
+        } catch (Exception e) {
+            // Fall through
+        }
+        
+        System.err.println("Failed to load coordinates from all paths");
+        return null;
+    }
+    
+    // Internal constructor for use by loadWithFallback
+    private PixelCoordinates(List<PixelCoordinate> coordinates, List<Map<String, Object>> rawCoords) {
+        this.coordinates = new ArrayList<>();
+        for (Map<String, Object> coord : rawCoords) {
+            int index = ((Double) coord.get("index")).intValue();
+            double x = (Double) coord.get("x");
+            double y = (Double) coord.get("y");
+            this.coordinates.add(new PixelCoordinate(index, x, y));
+        }
+        System.out.println("Loaded " + this.coordinates.size() + " pixel coordinates");
         calculateCenter();
         calculateDistances();
     }

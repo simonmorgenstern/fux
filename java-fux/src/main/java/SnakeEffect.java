@@ -46,6 +46,13 @@ public class SnakeEffect implements Effect {
         
         // Initialize snake (4 LEDs long, random start position)
         this.snakeBody = new LinkedList<>();
+        
+        // Safety check: ensure coordinates are loaded
+        if (coords == null || coords.getCount() == 0) {
+            System.err.println("SnakeEffect: Cannot initialize - no coordinates available");
+            throw new RuntimeException("SnakeEffect requires valid LED coordinates");
+        }
+        
         int startLED = random.nextInt(coords.getCount());
         snakeBody.add(startLED);
         

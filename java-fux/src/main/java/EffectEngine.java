@@ -60,19 +60,8 @@ public class EffectEngine implements Runnable {
         this.sideStrip = sideStrip;
         this.running = false;
         
-        // Load pixel coordinates
-        String coordsPath = "/home/pi/fux/assets/pixelCoordinates.json";
-        try {
-            this.coordinates = new PixelCoordinates(coordsPath);
-        } catch (Exception e) {
-            System.err.println("Failed to load coordinates from " + coordsPath + ", trying current directory...");
-            try {
-                this.coordinates = new PixelCoordinates("pixelCoordinates.json");
-            } catch (Exception e2) {
-                System.err.println("Failed to load coordinates: " + e2.getMessage());
-                this.coordinates = null;
-            }
-        }
+        // Load pixel coordinates with fallback paths
+        this.coordinates = PixelCoordinates.loadWithFallback();
     }
     
     public void setStateUpdateCallback(StateUpdateCallback callback) {

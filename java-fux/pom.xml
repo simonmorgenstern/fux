@@ -58,6 +58,7 @@
                 <directory>..</directory>
                 <includes>
                     <include>effects/*.json</include>
+                    <include>assets/pixelCoordinates.json</include>
                 </includes>
             </resource>
         </resources>
