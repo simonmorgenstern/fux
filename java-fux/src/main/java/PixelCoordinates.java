@@ -33,28 +33,35 @@ public class PixelCoordinates {
         // Try file system paths first
         for (String path : pathsToTry) {
             try {
-                return new PixelCoordinates(path);
+                PixelCoordinates coords = new PixelCoordinates(path);
+                if (coords.coordinates != null && coords.coordinates.size() > 0) {
+                    System.out.println("✓ Loaded coordinates from: " + path);
+                    return coords;
+                }
             } catch (Exception e) {
                 // Try next path
             }
         }
         
         // Try classpath as last resort
-        try {
-            Gson gson = new Gson();
-            Type listType = new TypeToken<ArrayList<Map<String, Object>>>(){}.getType();
-            java.io.InputStream is = PixelCoordinates.class.getClassLoader().getResourceAsStream("pixelCoordinates.json");
-            if (is != null) {
-                List<Map<String, Object>> rawCoords = gson.fromJson(new InputStreamReader(is), listType);
-                PixelCoordinates coords = new PixelCoordinates(new ArrayList<>(), rawCoords);
-                System.out.println("Loaded coordinates from classpath: pixelCoordinates.json");
-                return coords;
+        String[] classpathPaths = {"pixelCoordinates.json", "assets/pixelCoordinates.json"};
+        for (String classpathPath : classpathPaths) {
+            try {
+                Gson gson = new Gson();
+                Type listType = new TypeToken<ArrayList<Map<String, Object>>>(){}.getType();
+                java.io.InputStream is = PixelCoordinates.class.getClassLoader().getResourceAsStream(classpathPath);
+                if (is != null) {
+                    List<Map<String, Object>> rawCoords = gson.fromJson(new InputStreamReader(is), listType);
+                    PixelCoordinates coords = new PixelCoordinates(new ArrayList<>(), rawCoords);
+                    System.out.println("✓ Loaded coordinates from classpath: " + classpathPath);
+                    return coords;
+                }
+            } catch (Exception e) {
+                // Try next classpath path
             }
-        } catch (Exception e) {
-            // Fall through
         }
         
-        System.err.println("Failed to load coordinates from all paths");
+        System.err.println("⚠ Warning: Could not load LED coordinates - effects may not work properly");
         return null;
     }
     
@@ -88,8 +95,7 @@ public class PixelCoordinates {
             
             System.out.println("Loaded " + coordinates.size() + " pixel coordinates");
         } catch (Exception e) {
-            System.err.println("Error loading coordinates: " + e.getMessage());
-            e.printStackTrace();
+            // Silently fail - loadWithFallback will try other paths
             coordinates = new ArrayList<>();
         }
     }
