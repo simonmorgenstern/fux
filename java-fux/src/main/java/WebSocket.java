@@ -19,6 +19,7 @@ public class WebSocket extends WebSocketServer {
     private static MusicMode musicModeRunner = new MusicMode(fuxStrip);
     private static Thread musicModeThread;
     private static EffectEngine effectEngine = new EffectEngine(fuxStrip, sideStrip);
+    private static PreviewHttpServer previewHttpServer;
 
     public WebSocket(int port) throws UnknownHostException {
         super(new InetSocketAddress(port));
@@ -45,6 +46,15 @@ public class WebSocket extends WebSocketServer {
         
         // Start effect engine
         effectEngine.start();
+        
+        // Start preview HTTP server
+        try {
+            previewHttpServer = new PreviewHttpServer(effectEngine);
+            previewHttpServer.start();
+        } catch (Exception e) {
+            System.err.println("Failed to start preview HTTP server: " + e.getMessage());
+            e.printStackTrace();
+        }
         
         System.out.println("WebSocket server initialized on port " + port);
     }
@@ -149,6 +159,11 @@ public class WebSocket extends WebSocketServer {
                         
                         // Stop effect engine
                         effectEngine.stop();
+                        
+                        // Stop preview HTTP server
+                        if (previewHttpServer != null) {
+                            previewHttpServer.stop();
+                        }
                         
                         // Clear all LEDs
                         for (int i = 0; i < 268; i++) {
