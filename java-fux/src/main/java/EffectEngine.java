@@ -243,14 +243,18 @@ public class EffectEngine implements Runnable {
     }
     
     private void clearAllLEDs() {
-        for (int i = 0; i < 268; i++) {
-            mainStrip.setPixel(i, 0, 0, 0);
+        if (mainStrip != null) {
+            for (int i = 0; i < 268; i++) {
+                mainStrip.setPixel(i, 0, 0, 0);
+            }
+            mainStrip.render();
         }
-        for (int i = 0; i < 120; i++) {
-            sideStrip.setPixel(i, 0, 0, 0);
+        if (sideStrip != null) {
+            for (int i = 0; i < 120; i++) {
+                sideStrip.setPixel(i, 0, 0, 0);
+            }
+            sideStrip.render();
         }
-        mainStrip.render();
-        sideStrip.render();
     }
     
     @Override
@@ -318,29 +322,32 @@ public class EffectEngine implements Runnable {
         double timeSeconds = frameNumber / (double) fps;
         Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
         
-        // Clear all LEDs first
-        for (int i = 0; i < 268; i++) {
-            mainStrip.setPixel(i, 0, 0, 0);
-        }
-        for (int i = 0; i < 120; i++) {
-            sideStrip.setPixel(i, 0, 0, 0);
-        }
-        
-        // Apply pixels
-        for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
-            int index = entry.getKey();
-            Color color = entry.getValue();
-            
-            if (index < 268) {
-                mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
-            } else if (index < 388) {
-                sideStrip.setPixel(index - 268, color.getRed(), color.getGreen(), color.getBlue());
+        // Render to hardware (only if LED strips are available)
+        if (mainStrip != null && sideStrip != null) {
+            // Clear all LEDs first
+            for (int i = 0; i < 268; i++) {
+                mainStrip.setPixel(i, 0, 0, 0);
             }
+            for (int i = 0; i < 120; i++) {
+                sideStrip.setPixel(i, 0, 0, 0);
+            }
+            
+            // Apply pixels
+            for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
+                int index = entry.getKey();
+                Color color = entry.getValue();
+                
+                if (index < 268) {
+                    mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
+                } else if (index < 388) {
+                    sideStrip.setPixel(index - 268, color.getRed(), color.getGreen(), color.getBlue());
+                }
+            }
+            
+            // Render to hardware
+            mainStrip.render();
+            sideStrip.render();
         }
-        
-        // Render to hardware
-        mainStrip.render();
-        sideStrip.render();
         
         // Sleep to maintain FPS
         long elapsed = System.currentTimeMillis() - startTime;

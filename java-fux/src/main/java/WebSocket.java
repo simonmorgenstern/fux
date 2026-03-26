@@ -14,12 +14,39 @@ public class WebSocket extends WebSocketServer {
     private ArrayList<ParsedFrame> parsedFrames;
     private Gson gson;
     private FrameParser frameParser;
-    private static Ws281xLedStrip fuxStrip = new Ws281xLedStrip(268, 18, 800000, 10, 100, 0, false, LedStripType.WS2811_STRIP_GRB, true);
-    private static Ws281xLedStrip sideStrip = new Ws281xLedStrip(120, 13, 800000, 10, 200, 1, false, LedStripType.WS2811_STRIP_GRB, true);
-    private static MusicMode musicModeRunner = new MusicMode(fuxStrip);
+    private static Ws281xLedStrip fuxStrip;
+    private static Ws281xLedStrip sideStrip;
+    private static MusicMode musicModeRunner;
     private static Thread musicModeThread;
-    private static EffectEngine effectEngine = new EffectEngine(fuxStrip, sideStrip);
+    private static EffectEngine effectEngine;
     private static PreviewHttpServer previewHttpServer;
+    private static boolean isHardwareAvailable = false;
+    
+    static {
+        // Only initialize hardware LED strips on Raspberry Pi
+        String osName = System.getProperty("os.name").toLowerCase();
+        String osArch = System.getProperty("os.arch");
+        isHardwareAvailable = osName.contains("linux") && osArch.startsWith("arm");
+        
+        if (isHardwareAvailable) {
+            try {
+                fuxStrip = new Ws281xLedStrip(268, 18, 800000, 10, 100, 0, false, LedStripType.WS2811_STRIP_GRB, true);
+                sideStrip = new Ws281xLedStrip(120, 13, 800000, 10, 200, 1, false, LedStripType.WS2811_STRIP_GRB, true);
+                musicModeRunner = new MusicMode(fuxStrip);
+                effectEngine = new EffectEngine(fuxStrip, sideStrip);
+                System.out.println("Hardware LED strips initialized (Raspberry Pi detected)");
+            } catch (Exception e) {
+                System.err.println("Failed to initialize hardware: " + e.getMessage());
+                isHardwareAvailable = false;
+                fuxStrip = null;
+                sideStrip = null;
+            }
+        } else {
+            // Mac/Linux dev mode - no hardware
+            System.out.println("Running in preview-only mode (hardware not available on " + osName + ")");
+            effectEngine = new EffectEngine(null, null);
+        }
+    }
 
     public WebSocket(int port) throws UnknownHostException {
         super(new InetSocketAddress(port));
@@ -158,22 +185,26 @@ public class WebSocket extends WebSocketServer {
                         stopMusicMode();
                         
                         // Stop effect engine
-                        effectEngine.stop();
+                        if (effectEngine != null) {
+                            effectEngine.stop();
+                        }
                         
                         // Stop preview HTTP server
                         if (previewHttpServer != null) {
                             previewHttpServer.stop();
                         }
                         
-                        // Clear all LEDs
-                        for (int i = 0; i < 268; i++) {
-                            fuxStrip.setPixel(i, 0, 0, 0);
-                            if (i < 120) {
-                                sideStrip.setPixel(i, 0, 0, 0);
+                        // Clear all LEDs (if hardware available)
+                        if (fuxStrip != null && sideStrip != null) {
+                            for (int i = 0; i < 268; i++) {
+                                fuxStrip.setPixel(i, 0, 0, 0);
+                                if (i < 120) {
+                                    sideStrip.setPixel(i, 0, 0, 0);
+                                }
                             }
+                            fuxStrip.render();
+                            sideStrip.render();
                         }
-                        fuxStrip.render();
-                        sideStrip.render();
                         
                         Thread.sleep(500); // Give time for response to be sent
                         
@@ -190,19 +221,23 @@ public class WebSocket extends WebSocketServer {
 
             // Legacy frame-based animations
             if (message.matches("start:\\d+")) {
-                for (ParsedFrame frame: this.parsedFrames) {
-                    int[][] changes = frame.getParsedChanges();
-                    for(int index = 0; index < changes.length; index ++) {
-                       fuxStrip.setPixel(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
+                if (fuxStrip != null) {
+                    for (ParsedFrame frame: this.parsedFrames) {
+                        int[][] changes = frame.getParsedChanges();
+                        for(int index = 0; index < changes.length; index ++) {
+                           fuxStrip.setPixel(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
+                        }
+                        try {
+                            Thread.sleep(frame.getDuration());
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        fuxStrip.render();
                     }
-                    try {
-                        Thread.sleep(frame.getDuration());
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    fuxStrip.render();
+                    this.parsedFrames.clear();
+                } else {
+                    System.out.println("Hardware not available - skipping frame animation");
                 }
-                this.parsedFrames.clear();
                 return;
             } 
             
@@ -242,14 +277,18 @@ public class WebSocket extends WebSocketServer {
         if (musicModeThread == null || !musicModeThread.isAlive()) return; // guard clause
         musicModeRunner.stopped = true;
         musicModeThread.interrupt();
-        for (int i = 0; i < 268; i++) {
-            fuxStrip.setPixel(i, 0, 0, 0);
-            if (i < 120) {
-                sideStrip.setPixel(i, 0, 0, 0);
+        
+        // Clear LEDs if hardware available
+        if (fuxStrip != null && sideStrip != null) {
+            for (int i = 0; i < 268; i++) {
+                fuxStrip.setPixel(i, 0, 0, 0);
+                if (i < 120) {
+                    sideStrip.setPixel(i, 0, 0, 0);
+                }
             }
+            fuxStrip.render();
+            sideStrip.render();
         }
-        fuxStrip.render();
-        sideStrip.render();
     }
 
     @Override
