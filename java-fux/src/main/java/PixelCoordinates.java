@@ -45,19 +45,26 @@ public class PixelCoordinates {
         
         // Try classpath as last resort
         String[] classpathPaths = {"pixelCoordinates.json", "assets/pixelCoordinates.json"};
+        System.out.println("DEBUG: Trying classpath resources...");
         for (String classpathPath : classpathPaths) {
             try {
+                System.out.println("DEBUG: Attempting to load from classpath: " + classpathPath);
                 Gson gson = new Gson();
                 Type listType = new TypeToken<ArrayList<Map<String, Object>>>(){}.getType();
                 java.io.InputStream is = PixelCoordinates.class.getClassLoader().getResourceAsStream(classpathPath);
                 if (is != null) {
+                    System.out.println("DEBUG: Found resource stream for: " + classpathPath);
                     List<Map<String, Object>> rawCoords = gson.fromJson(new InputStreamReader(is), listType);
+                    System.out.println("DEBUG: Parsed " + rawCoords.size() + " coordinates from JSON");
                     PixelCoordinates coords = new PixelCoordinates(new ArrayList<>(), rawCoords);
-                    System.out.println("✓ Loaded coordinates from classpath: " + classpathPath);
+                    System.out.println("✓ Loaded " + coords.getCount() + " coordinates from classpath: " + classpathPath);
                     return coords;
+                } else {
+                    System.out.println("DEBUG: Resource not found at: " + classpathPath);
                 }
             } catch (Exception e) {
-                // Try next classpath path
+                System.err.println("DEBUG: Error loading from " + classpathPath + ": " + e.getMessage());
+                e.printStackTrace();
             }
         }
         
