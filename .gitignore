@@ -1,5 +1,38 @@
 controller/wpa_supplicant.conf
 
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test scripts
+test_*.py
+test_*.js
+send_*.js
+
+# Build artifacts
+effects-deploy/
+
  Created by https://www.toptal.com/developers/gitignore/api/swift,xcode,Cobjective-c,osx
 # Edit at https://www.toptal.com/developers/gitignore?templates=swift,xcode,Cobjective-c,osx
 
