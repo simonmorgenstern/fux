@@ -15,7 +15,6 @@ public class WebSocket extends WebSocketServer {
     private Gson gson;
     private FrameParser frameParser;
     private static WS281x fuxStrip;
-    private static WS281x sideStrip;
     private static MusicMode musicModeRunner;
     private static Thread musicModeThread;
     private static EffectEngine effectEngine;
@@ -33,20 +32,18 @@ public class WebSocket extends WebSocketServer {
             try {
                 // WS281x constructor: (gpioPin, brightness, ledCount)
                 fuxStrip = new WS281x(18, 100, 268);
-                sideStrip = new WS281x(13, 200, 120);
                 musicModeRunner = new MusicMode(fuxStrip);
-                effectEngine = new EffectEngine(fuxStrip, sideStrip);
-                System.out.println("Hardware LED strips initialized (Raspberry Pi detected)");
+                effectEngine = new EffectEngine(fuxStrip);
+                System.out.println("Hardware LED strip initialized (fuxStrip on GPIO 18)");
             } catch (Exception e) {
                 System.err.println("Failed to initialize hardware: " + e.getMessage());
                 isHardwareAvailable = false;
                 fuxStrip = null;
-                sideStrip = null;
             }
         } else {
             // Mac/Linux dev mode - no hardware
             System.out.println("Running in preview-only mode (hardware not available on " + osName + ")");
-            effectEngine = new EffectEngine(null, null);
+            effectEngine = new EffectEngine(null);
         }
     }
 
@@ -222,15 +219,11 @@ public class WebSocket extends WebSocketServer {
                         }
                         
                         // Clear all LEDs (if hardware available)
-                        if (fuxStrip != null && sideStrip != null) {
+                        if (fuxStrip != null) {
                             for (int i = 0; i < 268; i++) {
                                 fuxStrip.setPixelColour(i, PixelColour.createColourRGB(0, 0, 0));
-                                if (i < 120) {
-                                    sideStrip.setPixelColour(i, PixelColour.createColourRGB(0, 0, 0));
-                                }
                             }
                             fuxStrip.render();
-                            sideStrip.render();
                         }
                         
                         Thread.sleep(500); // Give time for response to be sent
@@ -306,15 +299,11 @@ public class WebSocket extends WebSocketServer {
         musicModeThread.interrupt();
         
         // Clear LEDs if hardware available
-        if (fuxStrip != null && sideStrip != null) {
+        if (fuxStrip != null) {
             for (int i = 0; i < 268; i++) {
                 fuxStrip.setPixelColourRGB(i, 0, 0, 0);
-                if (i < 120) {
-                    sideStrip.setPixelColourRGB(i, 0, 0, 0);
-                }
             }
             fuxStrip.render();
-            sideStrip.render();
         }
     }
 

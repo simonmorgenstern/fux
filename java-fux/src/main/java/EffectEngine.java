@@ -14,7 +14,6 @@ public class EffectEngine implements Runnable {
     private boolean running;
     private Thread renderThread;
     private WS281x mainStrip;
-    private WS281x sideStrip;
     private PixelCoordinates coordinates;
     
     // Queue management
@@ -55,9 +54,8 @@ public class EffectEngine implements Runnable {
         void broadcastError(String message);
     }
     
-    public EffectEngine(WS281x mainStrip, WS281x sideStrip) {
+    public EffectEngine(WS281x mainStrip) {
         this.mainStrip = mainStrip;
-        this.sideStrip = sideStrip;
         this.running = false;
         
         // Load pixel coordinates with fallback paths
@@ -277,12 +275,6 @@ public class EffectEngine implements Runnable {
             }
             mainStrip.render();
         }
-        if (sideStrip != null) {
-            for (int i = 0; i < 120; i++) {
-                sideStrip.setPixelColourRGB(i, 0, 0, 0);
-            }
-            sideStrip.render();
-        }
     }
     
     @Override
@@ -353,31 +345,26 @@ public class EffectEngine implements Runnable {
         double timeSeconds = frameNumber / (double) fps;
         Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
         
-        // Render to hardware (only if LED strips are available)
-        if (mainStrip != null && sideStrip != null) {
+        // Render to hardware (only if LED strip is available)
+        if (mainStrip != null) {
             // Clear all LEDs first
             for (int i = 0; i < 268; i++) {
                 mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
-            for (int i = 0; i < 120; i++) {
-                sideStrip.setPixelColourRGB(i, 0, 0, 0);
-            }
             
-            // Apply pixels
+            // Apply pixels (only indices 0-267 for fuxStrip)
             for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
                 int index = entry.getKey();
                 Color color = entry.getValue();
                 
                 if (index < 268) {
                     mainStrip.setPixelColourRGB(index, color.getRed(), color.getGreen(), color.getBlue());
-                } else if (index < 388) {
-                    sideStrip.setPixelColourRGB(index - 268, color.getRed(), color.getGreen(), color.getBlue());
                 }
+                // Ignore indices >= 268 (old sideStrip range)
             }
             
             // Render to hardware
             mainStrip.render();
-            sideStrip.render();
         }
         
         // Sleep to maintain FPS

@@ -16,22 +16,19 @@ public class EffectRenderer implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(EffectRenderer.class);
     
     private static final int MAIN_LED_COUNT = 268;
-    private static final int SIDE_LED_COUNT = 120;
     private static final String EFFECTS_PATH = "/home/pi/fux-effects/";
     private static final String COORDS_PATH_PRIMARY = "/home/pi/fux/assets/pixelCoordinates.json";
     private static final String COORDS_PATH_FALLBACK = "pixelCoordinates.json";
     
     private final WS281x mainStrip;
-    private final WS281x sideStrip;
     private final PixelCoordinates coordinates;
     
     private volatile Effect currentEffect = null;
     private volatile boolean running = false;
     private Thread renderThread;
     
-    public EffectRenderer(WS281x mainStrip, WS281x sideStrip) {
+    public EffectRenderer(WS281x mainStrip) {
         this.mainStrip = mainStrip;
-        this.sideStrip = sideStrip;
         
         // Load pixel coordinates with fallback
         PixelCoordinates coords = null;
@@ -176,11 +173,7 @@ public class EffectRenderer implements Runnable {
             for (int i = 0; i < MAIN_LED_COUNT; i++) {
                 mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
-            for (int i = 0; i < SIDE_LED_COUNT; i++) {
-                sideStrip.setPixelColourRGB(i, 0, 0, 0);
-            }
             mainStrip.render();
-            sideStrip.render();
         } catch (Exception e) {
             logger.error("Error clearing LEDs: {}", e.getMessage());
         }
@@ -238,25 +231,20 @@ public class EffectRenderer implements Runnable {
         for (int i = 0; i < MAIN_LED_COUNT; i++) {
             mainStrip.setPixelColourRGB(i, 0, 0, 0);
         }
-        for (int i = 0; i < SIDE_LED_COUNT; i++) {
-            sideStrip.setPixelColourRGB(i, 0, 0, 0);
-        }
         
-        // Apply pixels
+        // Apply pixels (only indices 0-267 for fuxStrip)
         for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
             int index = entry.getKey();
             Color color = entry.getValue();
             
             if (index < MAIN_LED_COUNT) {
                 mainStrip.setPixelColourRGB(index, color.getRed(), color.getGreen(), color.getBlue());
-            } else if (index < MAIN_LED_COUNT + SIDE_LED_COUNT) {
-                sideStrip.setPixelColourRGB(index - MAIN_LED_COUNT, color.getRed(), color.getGreen(), color.getBlue());
             }
+            // Ignore indices >= 268 (old sideStrip range)
         }
         
         // Render to hardware
         mainStrip.render();
-        sideStrip.render();
         
         // Sleep to maintain FPS
         long elapsed = System.currentTimeMillis() - startTime;
