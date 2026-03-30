@@ -1,4 +1,4 @@
-import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.diozero.ws281xj.rpiws281x.WS281x;
 import com.google.gson.Gson;
 
 import java.io.IOException;
@@ -10,7 +10,7 @@ import java.util.Random;
 
 public class MusicMode implements Runnable{
 
-    Ws281xLedStrip fuxStrip;
+    WS281x fuxStrip;
 
     ArrayList<Animation> futureAnimations;
     Animation currentAnimation;
@@ -21,7 +21,7 @@ public class MusicMode implements Runnable{
     private int currentBPM = 150;
     private Random wuerfel;
 
-    public MusicMode(Ws281xLedStrip fuxStrip) {
+    public MusicMode(WS281x fuxStrip) {
         this.fuxStrip = fuxStrip;
         this.animationParser = new AnimationParser();
         this.jsonReader = new Gson();

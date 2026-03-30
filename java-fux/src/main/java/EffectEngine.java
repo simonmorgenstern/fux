@@ -1,4 +1,4 @@
-import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.diozero.ws281xj.rpiws281x.WS281x;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.awt.Color;
@@ -13,8 +13,8 @@ public class EffectEngine implements Runnable {
     private Effect currentEffect;
     private boolean running;
     private Thread renderThread;
-    private Ws281xLedStrip mainStrip;
-    private Ws281xLedStrip sideStrip;
+    private WS281x mainStrip;
+    private WS281x sideStrip;
     private PixelCoordinates coordinates;
     
     // Queue management
@@ -55,7 +55,7 @@ public class EffectEngine implements Runnable {
         void broadcastError(String message);
     }
     
-    public EffectEngine(Ws281xLedStrip mainStrip, Ws281xLedStrip sideStrip) {
+    public EffectEngine(WS281x mainStrip, WS281x sideStrip) {
         this.mainStrip = mainStrip;
         this.sideStrip = sideStrip;
         this.running = false;

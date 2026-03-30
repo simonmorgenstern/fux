@@ -1,4 +1,4 @@
-import com.github.mbelling.ws281x.Color;
+import java.awt.Color;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 

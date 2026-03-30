@@ -1,4 +1,5 @@
-import com.diozero.ws281x.WS281x;
+import com.diozero.ws281xj.rpiws281x.WS281x;
+import com.diozero.ws281xj.PixelColour;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.java_websocket.handshake.ClientHandshake;
@@ -30,8 +31,9 @@ public class WebSocket extends WebSocketServer {
         
         if (isHardwareAvailable) {
             try {
-                fuxStrip = new Ws281xLedStrip(268, 18, 800000, 10, 100, 0, false, LedStripType.WS2811_STRIP_GRB, true);
-                sideStrip = new Ws281xLedStrip(120, 13, 800000, 10, 200, 1, false, LedStripType.WS2811_STRIP_GRB, true);
+                // WS281x constructor: (gpioPin, brightness, ledCount)
+                fuxStrip = new WS281x(18, 100, 268);
+                sideStrip = new WS281x(13, 200, 120);
                 musicModeRunner = new MusicMode(fuxStrip);
                 effectEngine = new EffectEngine(fuxStrip, sideStrip);
                 System.out.println("Hardware LED strips initialized (Raspberry Pi detected)");
@@ -222,9 +224,9 @@ public class WebSocket extends WebSocketServer {
                         // Clear all LEDs (if hardware available)
                         if (fuxStrip != null && sideStrip != null) {
                             for (int i = 0; i < 268; i++) {
-                                fuxStrip.setPixel(i, 0, 0, 0);
+                                fuxStrip.setPixelColour(i, PixelColour.createColourRGB(0, 0, 0));
                                 if (i < 120) {
-                                    sideStrip.setPixel(i, 0, 0, 0);
+                                    sideStrip.setPixelColour(i, PixelColour.createColourRGB(0, 0, 0));
                                 }
                             }
                             fuxStrip.render();

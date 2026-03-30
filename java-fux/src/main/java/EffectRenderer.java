@@ -1,5 +1,5 @@
 
-import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.diozero.ws281xj.rpiws281x.WS281x;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.awt.Color;
@@ -21,15 +21,15 @@ public class EffectRenderer implements Runnable {
     private static final String COORDS_PATH_PRIMARY = "/home/pi/fux/assets/pixelCoordinates.json";
     private static final String COORDS_PATH_FALLBACK = "pixelCoordinates.json";
     
-    private final Ws281xLedStrip mainStrip;
-    private final Ws281xLedStrip sideStrip;
+    private final WS281x mainStrip;
+    private final WS281x sideStrip;
     private final PixelCoordinates coordinates;
     
     private volatile Effect currentEffect = null;
     private volatile boolean running = false;
     private Thread renderThread;
     
-    public EffectRenderer(Ws281xLedStrip mainStrip, Ws281xLedStrip sideStrip) {
+    public EffectRenderer(WS281x mainStrip, WS281x sideStrip) {
         this.mainStrip = mainStrip;
         this.sideStrip = sideStrip;
         
