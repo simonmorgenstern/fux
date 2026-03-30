@@ -118,10 +118,10 @@ public class PreviewHttpHandler implements HttpHandler {
             logger.info("Preview GIF sent: {} bytes", gifData.length);
             
         } catch (IllegalArgumentException e) {
-            logger.warn("Invalid effect: {}", effectName);
-            sendError(exchange, 404, "Effect not found: " + effectName);
+            logger.warn("Invalid effect '{}': {}", effectName, e.getMessage(), e);
+            sendError(exchange, 404, "Effect not found: " + effectName + " (" + e.getMessage() + ")");
         } catch (Exception e) {
-            logger.error("Error generating preview: {}", e.getMessage(), e);
+            logger.error("Error generating preview for '{}': {}", effectName, e.getMessage(), e);
             sendError(exchange, 500, "Error generating preview: " + e.getMessage());
         }
     }

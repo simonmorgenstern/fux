@@ -11,8 +11,6 @@ import java.util.List;
  */
 public class PreviewRenderer {
     private static final int MAIN_LED_COUNT = 268;
-    private static final String COORDS_PATH_PRIMARY = "/home/pi/fux/assets/pixelCoordinates.json";
-    private static final String COORDS_PATH_FALLBACK = "assets/pixelCoordinates.json";
     
     private final PixelCoordinates coordinates;
     private final int pixelSize;
@@ -30,28 +28,15 @@ public class PreviewRenderer {
     public PreviewRenderer(int pixelSize) {
         this.pixelSize = pixelSize;
         
-        // Load coordinates
-        PixelCoordinates coords = null;
-        try {
-            coords = new PixelCoordinates(COORDS_PATH_PRIMARY);
-            System.out.println("PreviewRenderer loaded coordinates from: " + COORDS_PATH_PRIMARY);
-        } catch (Exception e) {
-            System.err.println("Failed to load coordinates from primary path, trying fallback");
-            try {
-                coords = new PixelCoordinates(COORDS_PATH_FALLBACK);
-                System.out.println("PreviewRenderer loaded coordinates from: " + COORDS_PATH_FALLBACK);
-            } catch (Exception e2) {
-                System.err.println("Failed to load coordinates: " + e2.getMessage());
-            }
-        }
-        this.coordinates = coords;
+        // Load coordinates using shared fallback logic
+        this.coordinates = PixelCoordinates.loadWithFallback();
         
-        if (coordinates != null) {
+        if (coordinates != null && coordinates.getCount() > 0) {
             // Calculate canvas dimensions based on coordinate bounds
             // Find bounds of the first 268 LEDs
-            double minX = Double.MAX_VALUE, maxX = Double.MIN_VALUE;
-            double minY = Double.MAX_VALUE, maxY = Double.MIN_VALUE;
-            
+            double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+            double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+
             for (int i = 0; i < Math.min(MAIN_LED_COUNT, coordinates.getCount()); i++) {
                 PixelCoordinate coord = coordinates.get(i);
                 minX = Math.min(minX, coord.getX());
@@ -59,9 +44,13 @@ public class PreviewRenderer {
                 minY = Math.min(minY, coord.getY());
                 maxY = Math.max(maxY, coord.getY());
             }
-            
+
             double width = maxX - minX;
             double height = maxY - minY;
+
+            // Guard against degenerate bounds
+            if (width <= 0) width = 1;
+            if (height <= 0) height = 1;
             
             // Add 10% padding on each side
             double padding = 0.1;
