@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "eye_blink",
   "fps": 20,
+  "duration": 5,
   "parameters": {
     "speed": 1.0
   }

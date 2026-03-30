@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "box_mirror",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "changeInterval": 60
   }

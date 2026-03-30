@@ -17,12 +17,13 @@ public class EffectEngine implements Runnable {
     private PixelCoordinates coordinates;
     
     // Queue management
-    private final LinkedBlockingQueue<String> effectQueue = new LinkedBlockingQueue<>();
+    private final LinkedBlockingQueue<QueueEntry> effectQueue = new LinkedBlockingQueue<>();
     private final int queueCapacity = 50;
     private ControlMode mode = ControlMode.RANDOM;
     private long effectStartTime = 0;
     private long frameNumber = 0;
-    private final int minDisplaySeconds = 30;
+    private int currentEffectDuration = 30; // total seconds for current effect
+    private int currentEffectDefaultDuration = 30; // duration from JSON
     private final Random random = new Random();
     
     // Available effects
@@ -73,17 +74,17 @@ public class EffectEngine implements Runnable {
         broadcastState();
     }
     
-    public void addToQueue(String effectName) {
-        if (!availableEffects.contains(effectName)) {
-            broadcastError("Unknown effect: " + effectName);
+    public void addToQueue(QueueEntry entry) {
+        if (!availableEffects.contains(entry.getEffectName())) {
+            broadcastError("Unknown effect: " + entry.getEffectName());
             return;
         }
         if (effectQueue.size() >= queueCapacity) {
             broadcastError("Queue is full (capacity: " + queueCapacity + ")");
             return;
         }
-        effectQueue.offer(effectName);
-        System.out.println("Added effect '" + effectName + "' to queue (size: " + effectQueue.size() + ")");
+        effectQueue.offer(entry);
+        System.out.println("Added effect '" + entry + "' to queue (size: " + effectQueue.size() + ")");
         broadcastState();
     }
     
@@ -102,7 +103,7 @@ public class EffectEngine implements Runnable {
         return mode;
     }
     
-    public List<String> getQueueSnapshot() {
+    public List<QueueEntry> getQueueSnapshot() {
         return new ArrayList<>(effectQueue);
     }
     
@@ -115,11 +116,11 @@ public class EffectEngine implements Runnable {
             return null;
         }
         long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
-        int remaining = minDisplaySeconds - (int) elapsedSeconds;
+        int remaining = currentEffectDuration - (int) elapsedSeconds;
         return remaining > 0 ? remaining : 0;
     }
     
-    private void loadEffect(String effectName) {
+    private void loadEffect(String effectName, QueueEntry queueEntry) {
         if (coordinates == null) {
             System.err.println("Cannot load effect: coordinates not loaded");
             return;
@@ -172,6 +173,9 @@ public class EffectEngine implements Runnable {
             
             String algorithm = effectDef.get("algorithm").getAsString();
             JsonObject params = effectDef.getAsJsonObject("parameters");
+
+            // Read default duration from JSON (fallback 30s)
+            currentEffectDefaultDuration = effectDef.has("duration") ? effectDef.get("duration").getAsInt() : 30;
             
             // Create effect instance
             switch(algorithm) {
@@ -238,8 +242,15 @@ public class EffectEngine implements Runnable {
             currentEffect.initialize(params, coordinates);
             effectStartTime = System.currentTimeMillis();
             frameNumber = 0;
-            
-            System.out.println("Effect loaded: " + currentEffect.getName());
+
+            // Compute total display time
+            if (queueEntry != null) {
+                currentEffectDuration = queueEntry.getTotalDuration(currentEffectDefaultDuration);
+            } else {
+                currentEffectDuration = currentEffectDefaultDuration;
+            }
+
+            System.out.println("Effect loaded: " + currentEffect.getName() + " (duration: " + currentEffectDuration + "s)");
         } catch (Exception e) {
             System.err.println("Error loading effect: " + e.getMessage());
             e.printStackTrace();
@@ -288,26 +299,25 @@ public class EffectEngine implements Runnable {
                 // If we have a current effect, ensure min display time before switching
                 if (currentEffect != null) {
                     long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
-                    if (elapsedSeconds < minDisplaySeconds) {
+                    if (elapsedSeconds < currentEffectDuration) {
                         // Render current effect at proper FPS (sleep is handled inside renderFrame)
                         renderFrame();
                         continue;
                     }
                 }
-                
+
                 // Determine next effect
-                String nextEffect = null;
                 if (mode == ControlMode.QUEUE) {
                     // Block until an effect is available (with timeout to check running)
-                    nextEffect = effectQueue.poll(1, java.util.concurrent.TimeUnit.SECONDS);
+                    QueueEntry entry = effectQueue.poll(1, java.util.concurrent.TimeUnit.SECONDS);
+                    if (entry != null) {
+                        loadEffect(entry.getEffectName(), entry);
+                        broadcastState();
+                    }
                 } else { // RANDOM mode
                     // Pick a random effect
-                    nextEffect = availableEffects.get(random.nextInt(availableEffects.size()));
-                }
-                
-                if (nextEffect != null) {
-                    // Load the effect
-                    loadEffect(nextEffect);
+                    String nextEffect = availableEffects.get(random.nextInt(availableEffects.size()));
+                    loadEffect(nextEffect, null);
                     broadcastState();
                 }
                 

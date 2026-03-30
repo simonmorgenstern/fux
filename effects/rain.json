@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "rain",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "drop_count": 10,
     "speed_min": 2.0,

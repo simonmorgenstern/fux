@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "fire",
   "fps": 30,
+  "duration": 30,
   "parameters": {
     "intensity": 1.0,
     "cooling": 55,

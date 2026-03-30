@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "radial_wave",
   "fps": 33,
+  "duration": 25,
   "parameters": {
     "wave_spacing": 50,
     "wave_width": 30,

@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "breathing",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "breath_rate": 2.0,
     "min_brightness": 0.2,

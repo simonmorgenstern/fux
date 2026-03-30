@@ -146,9 +146,21 @@ public class WebSocket extends WebSocketServer {
             }
             
             // Queue operations
+            // Format: ADD_QUEUE:effect_name[:duration=X][:repeat=Y]
             if (message.startsWith("ADD_QUEUE:")) {
-                String effectName = message.substring(10).trim();
-                effectEngine.addToQueue(effectName);
+                String payload = message.substring(10).trim();
+                String[] parts = payload.split(":");
+                String effectName = parts[0];
+                Integer duration = null;
+                Integer repeat = null;
+                for (int idx = 1; idx < parts.length; idx++) {
+                    if (parts[idx].startsWith("duration=")) {
+                        try { duration = Integer.parseInt(parts[idx].substring(9)); } catch (NumberFormatException ignored) {}
+                    } else if (parts[idx].startsWith("repeat=")) {
+                        try { repeat = Integer.parseInt(parts[idx].substring(7)); } catch (NumberFormatException ignored) {}
+                    }
+                }
+                effectEngine.addToQueue(new QueueEntry(effectName, duration, repeat));
                 return;
             }
             

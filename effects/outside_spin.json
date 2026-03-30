@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "outside_spin",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "speed": 1.0
   }

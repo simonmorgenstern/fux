@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "sparkle",
   "fps": 30,
+  "duration": 15,
   "parameters": {
     "density": 15,
     "color_mode": "rainbow",

@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "meteor_shower",
   "fps": 30,
+  "duration": 10,
   "parameters": {
     "meteor_count": 3,
     "speed_min": 15.0,

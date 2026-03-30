@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "bilateral_fill",
   "fps": 33,
+  "duration": 15,
   "parameters": {
     "fill_speed": 5.0,
     "brightness": 1.0,

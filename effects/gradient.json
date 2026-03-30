@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "gradient",
   "fps": 33,
+  "duration": 25,
   "parameters": {
     "gradient_axis": "horizontal",
     "speed": 20.0,

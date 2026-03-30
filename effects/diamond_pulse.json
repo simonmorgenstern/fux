@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "diamond_pulse",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "speed": 1.0,
     "color": [0, 200, 255]

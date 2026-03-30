@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "firework",
   "fps": 30,
+  "duration": 8,
   "parameters": {
     "max_rockets": 3
   }

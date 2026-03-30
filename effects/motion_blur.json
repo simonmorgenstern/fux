@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "motion_blur",
   "fps": 30,
+  "duration": 20,
   "parameters": {
     "speed": 5.0,
     "blur_distance": 10

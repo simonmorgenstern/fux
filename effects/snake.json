@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "snake",
   "fps": 30,
+  "duration": 15,
   "parameters": {
     "snake_speed": 5,
     "snake_length": 20,

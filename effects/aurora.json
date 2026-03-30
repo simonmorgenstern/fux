@@ -5,6 +5,7 @@
   "type": "procedural",
   "algorithm": "aurora",
   "fps": 30,
+  "duration": 30,
   "parameters": {
     "wave_speed": 3.0,
     "wave_height": 50,
