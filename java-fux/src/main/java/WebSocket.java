@@ -1,5 +1,4 @@
-import com.github.mbelling.ws281x.LedStripType;
-import com.github.mbelling.ws281x.Ws281xLedStrip;
+import com.diozero.ws281x.WS281x;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.java_websocket.handshake.ClientHandshake;
@@ -14,8 +13,8 @@ public class WebSocket extends WebSocketServer {
     private ArrayList<ParsedFrame> parsedFrames;
     private Gson gson;
     private FrameParser frameParser;
-    private static Ws281xLedStrip fuxStrip;
-    private static Ws281xLedStrip sideStrip;
+    private static WS281x fuxStrip;
+    private static WS281x sideStrip;
     private static MusicMode musicModeRunner;
     private static Thread musicModeThread;
     private static EffectEngine effectEngine;
