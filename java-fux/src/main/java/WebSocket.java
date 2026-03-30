@@ -26,7 +26,8 @@ public class WebSocket extends WebSocketServer {
         // Only initialize hardware LED strips on Raspberry Pi
         String osName = System.getProperty("os.name").toLowerCase();
         String osArch = System.getProperty("os.arch");
-        isHardwareAvailable = osName.contains("linux") && osArch.startsWith("arm");
+        isHardwareAvailable = osName.contains("linux") && (osArch.startsWith("arm") || osArch.equals("aarch64"));
+        System.out.println("Platform detection: os.name=" + osName + ", os.arch=" + osArch + ", hardwareAvailable=" + isHardwareAvailable);
         
         if (isHardwareAvailable) {
             try {
