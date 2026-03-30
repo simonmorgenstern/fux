@@ -1,0 +1,14 @@
+{
+  "name": "Scanner",
+  "description": "Knight Rider style back and forth scanner",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "scanner",
+  "fps": 60,
+  "duration": 15,
+  "parameters": {
+    "speed": 30.0,
+    "eye_size": 8,
+    "color": [255, 0, 0]
+  }
+}

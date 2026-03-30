@@ -1,0 +1,14 @@
+{
+  "name": "Theater Chase",
+  "description": "Moving segments like a theater marquee",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "theater_chase",
+  "fps": 30,
+  "duration": 20,
+  "parameters": {
+    "segment_size": 3,
+    "speed": 10.0,
+    "colors": ["red", "orange", "yellow", "green", "cyan", "blue", "purple"]
+  }
+}

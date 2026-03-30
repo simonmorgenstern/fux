@@ -1,0 +1,13 @@
+{
+  "name": "Box Cascade",
+  "description": "Wave flowing through the 8 boxes in sequence",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "box_cascade",
+  "fps": 30,
+  "duration": 25,
+  "parameters": {
+    "speed": 2.0,
+    "colors": ["blue", "cyan", "purple"]
+  }
+}

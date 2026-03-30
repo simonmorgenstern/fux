@@ -1,0 +1,14 @@
+{
+  "name": "Twinkle",
+  "description": "Random stars twinkling and fading like a starry night",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "twinkle",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "density": 20,
+    "fade_speed": 0.03,
+    "colors": ["white", "warm_white", "cool_white"]
+  }
+}

@@ -16,7 +16,12 @@ public class EffectRenderer implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(EffectRenderer.class);
     
     private static final int MAIN_LED_COUNT = 268;
-    private static final String EFFECTS_PATH = "/home/pi/fux-effects/";
+    private static final String[] EFFECTS_PATHS = {
+        "/home/pi/fux-effects/",  // Production path
+        "/home/simon/.openclaw/workspace/fux/effects/",  // Development path
+        "effects/",  // Relative path
+        "../effects/"  // Parent relative path
+    };
     private static final String COORDS_PATH_PRIMARY = "/home/pi/fux/assets/pixelCoordinates.json";
     private static final String COORDS_PATH_FALLBACK = "pixelCoordinates.json";
     
@@ -117,23 +122,41 @@ public class EffectRenderer implements Runnable {
      * Create effect instance from name
      */
     private Effect createEffect(String effectName) {
+        Gson gson = new Gson();
+        JsonObject effectDef = null;
+        String loadedFromPath = null;
+        
+        // Try multiple paths
+        for (String basePath : EFFECTS_PATHS) {
+            try {
+                String effectPath = basePath + effectName + ".json";
+                effectDef = gson.fromJson(new FileReader(effectPath), JsonObject.class);
+                loadedFromPath = effectPath;
+                break;
+            } catch (Exception e) {
+                // Try next path
+            }
+        }
+        
+        if (effectDef == null) {
+            logger.error("Could not find effect definition for: {}", effectName);
+            return null;
+        }
+        
         try {
-            String effectPath = EFFECTS_PATH + effectName + ".json";
-            Gson gson = new Gson();
-            JsonObject effectDef = gson.fromJson(new FileReader(effectPath), JsonObject.class);
-            
             String algorithm = effectDef.get("algorithm").getAsString();
             JsonObject params = effectDef.getAsJsonObject("parameters");
             
             Effect effect = instantiateEffect(algorithm);
             if (effect != null) {
                 effect.initialize(params, coordinates);
+                logger.info("Effect loaded from: {}", loadedFromPath);
                 return effect;
             } else {
                 logger.error("Unknown algorithm: {}", algorithm);
             }
         } catch (Exception e) {
-            logger.error("Error loading effect '{}': {}", effectName, e.getMessage());
+            logger.error("Error initializing effect '{}': {}", effectName, e.getMessage());
         }
         return null;
     }
@@ -161,6 +184,12 @@ public class EffectRenderer implements Runnable {
             case "diamond_pulse": return new DiamondPulseEffect();
             case "box_wave": return new BoxWaveEffect();
             case "outside_spin": return new OutsideSpinEffect();
+            // New effects
+            case "comet": return new CometEffect();
+            case "scanner": return new ScannerEffect();
+            case "twinkle": return new TwinkleEffect();
+            case "theater_chase": return new TheaterChaseEffect();
+            case "box_cascade": return new BoxCascadeEffect();
             default: return null;
         }
     }

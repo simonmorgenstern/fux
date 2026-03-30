@@ -19,8 +19,16 @@ public class FireEffect implements Effect {
     public void initialize(JsonObject params, PixelCoordinates coords) {
         this.coords = coords;
         this.intensity = params.get("intensity").getAsDouble();
-        this.cooling = params.get("cooling").getAsDouble();
-        this.sparking = params.get("sparking").getAsDouble();
+        
+        // Convert parameters from 0-255 range to usable values
+        // cooling: 0-255 (FastLED style) -> scale down to reasonable range
+        double rawCooling = params.get("cooling").getAsDouble();
+        this.cooling = rawCooling / 255.0;  // Now 0.0 to 1.0
+        
+        // sparking: 0-255 (FastLED style) -> convert to probability
+        double rawSparking = params.get("sparking").getAsDouble();
+        this.sparking = rawSparking / 255.0;  // Now 0.0 to 1.0
+        
         this.fps = params.has("fps") ? params.get("fps").getAsInt() : 30;
         this.random = new Random();
         
@@ -32,8 +40,9 @@ public class FireEffect implements Effect {
         
         System.out.println("FireEffect initialized:");
         System.out.println("  Intensity: " + intensity);
-        System.out.println("  Cooling: " + cooling);
-        System.out.println("  Sparking: " + sparking);
+        System.out.println("  Cooling: " + cooling + " (raw: " + rawCooling + ")");
+        System.out.println("  Sparking: " + sparking + " (raw: " + rawSparking + ")");
+        System.out.println("  LED count: " + coords.getCount());
     }
     
     @Override
@@ -42,56 +51,76 @@ public class FireEffect implements Effect {
         
         // Step 1: Cool down every LED
         for (int i = 0; i < coords.getCount(); i++) {
-            int cooldown = (int)(random.nextDouble() * cooling * 10);
+            // Random cooling amount (0 to cooling * 20)
+            int cooldown = (int)(random.nextDouble() * cooling * 20);
             heat[i] = Math.max(0, heat[i] - cooldown);
         }
         
-        // Step 2: Heat from bottom rises (diffusion)
-        // For simplicity, we'll heat LEDs based on Y-coordinate
-        // LEDs with higher Y (bottom of fox) are hotter
+        // Step 2: Heat diffusion (heat rises)
+        // Simplified: just blur heat slightly
+        int[] newHeat = new int[coords.getCount()];
+        for (int i = 0; i < coords.getCount(); i++) {
+            // Average with neighbors (simplified - just +/-1 LED)
+            int sum = heat[i] * 2;  // Weight center more
+            int count = 2;
+            
+            if (i > 0) {
+                sum += heat[i-1];
+                count++;
+            }
+            if (i < coords.getCount() - 1) {
+                sum += heat[i+1];
+                count++;
+            }
+            
+            newHeat[i] = sum / count;
+        }
+        heat = newHeat;
+        
+        // Step 3: Add random sparks
+        // Randomly ignite LEDs based on their Y position (bottom = more likely)
         for (int i = 0; i < coords.getCount(); i++) {
             PixelCoordinate led = coords.get(i);
             
-            // Calculate base heat based on Y position
-            // Y=600 (bottom) = hot, Y=0 (top) = cold
-            double yFactor = led.getY() / 600.0; // 0.0 to 1.0
+            // Calculate fire likelihood based on Y position
+            // Higher Y (bottom) = more fire
+            double maxY = 600.0;  // Approximate max Y
+            double yFactor = Math.min(1.0, led.getY() / maxY);
             
-            // Add random sparking at the bottom (more controlled)
-            if (yFactor > 0.7 && random.nextDouble() < sparking) {
-                int spark = 80 + random.nextInt(60); // 80-140 (not too hot!)
-                heat[i] = Math.min(180, heat[i] + (int)(spark * intensity));
-            }
-            
-            // Add base heat based on Y position (much lower values)
-            if (yFactor > 0.5) {
-                // Bottom area: moderate heat
-                int baseHeat = (int)((yFactor - 0.5) * 80 * intensity);
-                heat[i] = Math.min(160, heat[i] + baseHeat);
+            // Bottom third of fox = fire zone
+            if (yFactor > 0.6) {
+                double sparkChance = sparking * (yFactor - 0.6) * 2.5;  // 0.0 to ~1.0
+                
+                if (random.nextDouble() < sparkChance) {
+                    // Ignite this LED
+                    int spark = 160 + random.nextInt(96);  // 160-255
+                    heat[i] = Math.min(255, heat[i] + (int)(spark * intensity));
+                }
             }
         }
         
-        // Step 3: Convert heat to color
+        // Step 4: Convert heat to color
         for (int i = 0; i < coords.getCount(); i++) {
             int h = heat[i];
             
-            if (h < 10) {
-                // Almost black (no fire here)
+            if (h < 20) {
+                // Too dark - skip
                 continue;
             }
             
             Color color;
             if (h < 85) {
-                // Dark red to red (0-85)
-                int r = (h * 3);
-                color = new Color(r, 0, 0);
+                // Black to dark red (0-85)
+                int r = h * 3;
+                color = new Color(Math.min(255, r), 0, 0);
             } else if (h < 170) {
-                // Red to orange (85-170)
-                int g = ((h - 85) * 3);
-                color = new Color(255, g, 0);
+                // Red to orange-yellow (85-170)
+                int g = (h - 85) * 3;
+                color = new Color(255, Math.min(255, g), 0);
             } else {
-                // Orange to yellow/white (170-255)
-                int b = ((h - 170) * 3);
-                color = new Color(255, 255, b);
+                // Orange-yellow to yellow-white (170-255)
+                int b = (h - 170) * 3;
+                color = new Color(255, 255, Math.min(255, b));
             }
             
             pixels.put(i, color);

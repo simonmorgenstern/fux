@@ -1,8 +1,6 @@
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.awt.Color;
-import java.io.FileReader;
 import java.util.*;
 
 public class BoxWaveEffect implements Effect {
@@ -45,37 +43,8 @@ public class BoxWaveEffect implements Effect {
     }
     
     private Set<Integer> loadLEDGroup(String groupName) {
-        Set<Integer> leds = new HashSet<>();
-        try {
-            // Read LED groups file
-            Gson gson = new Gson();
-            FileReader reader = new FileReader("../led-namer/led-groups.json");
-            JsonArray groups = gson.fromJson(reader, JsonArray.class);
-            reader.close();
-            
-            // Find the group
-            for (int i = 0; i < groups.size(); i++) {
-                JsonObject group = groups.get(i).getAsJsonObject();
-                if (group.get("name").getAsString().equals(groupName)) {
-                    JsonArray ranges = group.getAsJsonArray("ranges");
-                    
-                    // Parse ranges
-                    for (int j = 0; j < ranges.size(); j++) {
-                        JsonObject range = ranges.get(j).getAsJsonObject();
-                        int start = range.get("start").getAsInt();
-                        int end = range.get("end").getAsInt();
-                        
-                        for (int led = start; led <= end; led++) {
-                            leds.add(led);
-                        }
-                    }
-                    break;
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error loading LED group '" + groupName + "': " + e.getMessage());
-        }
-        return leds;
+        // Use centralized loader
+        return LEDGroupLoader.loadGroup(groupName);
     }
     
     @Override

@@ -1,0 +1,14 @@
+{
+  "name": "Comet",
+  "description": "Fast-moving comet with fading trail",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "comet",
+  "fps": 60,
+  "duration": 20,
+  "parameters": {
+    "speed": 40.0,
+    "trail_length": 15,
+    "colors": ["white", "cyan", "orange"]
+  }
+}
