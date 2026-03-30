@@ -1,0 +1,46 @@
+{
+  "comment": "Sample response from GET /api/effects/rain",
+  "response": {
+    "id": "rain",
+    "name": "Rain",
+    "description": "Rain drops falling down the display",
+    "algorithm": "rain",
+    "type": "procedural",
+    "fps": 30,
+    "version": "1.0",
+    "parameters": [
+      {
+        "name": "drop_count",
+        "type": "number",
+        "default": 10
+      },
+      {
+        "name": "speed_min",
+        "type": "number",
+        "default": 2.0
+      },
+      {
+        "name": "speed_max",
+        "type": "number",
+        "default": 5.0
+      },
+      {
+        "name": "trail_length",
+        "type": "number",
+        "default": 15
+      },
+      {
+        "name": "colors",
+        "type": "array",
+        "default": [
+          "blue",
+          "cyan",
+          "light_blue"
+        ]
+      }
+    ],
+    "tags": [
+      "weather"
+    ]
+  }
+}

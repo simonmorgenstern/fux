@@ -52,6 +52,9 @@ public class PreviewHttpServer {
         // Effects listing and detail endpoints
         httpServer.createContext("/api/effects", new EffectsHttpHandler());
         
+        // Queue control endpoint
+        httpServer.createContext("/api/queue", new QueueHttpHandler(effectEngine));
+        
         // Health check endpoint
         httpServer.createContext("/health", exchange -> {
             try {
@@ -86,6 +89,18 @@ public class PreviewHttpServer {
                     "    \"pixelSize\": 8            (pixel size, default: 8, range: 1-32)\n" +
                     "  }\n\n" +
                     "Response: Animated GIF image/gif\n\n" +
+                    "POST /api/queue - Add effect to queue\n" +
+                    "Request body (JSON):\n" +
+                    "  {\n" +
+                    "    \"effect\": \"effect_name\",   (required, e.g., \"rain\", \"meteor_shower\")\n" +
+                    "    \"duration\": 30,            (optional, seconds to play)\n" +
+                    "    \"repeat\": 1                (optional, number of times to repeat)\n" +
+                    "  }\n\n" +
+                    "Response: JSON with success status and queue size\n\n" +
+                    "GET /api/queue - Get current queue state\n" +
+                    "Response: JSON with mode, current effect, queue contents, and remaining time\n\n" +
+                    "DELETE /api/queue - Clear the queue\n" +
+                    "Response: JSON with success confirmation\n\n" +
                     "GET /health - Health check\n";
                 
                 byte[] responseBytes = response.getBytes("UTF-8");
