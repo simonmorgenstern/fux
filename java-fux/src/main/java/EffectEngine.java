@@ -21,7 +21,8 @@ public class EffectEngine implements Runnable {
     private final int queueCapacity = 50;
     private ControlMode mode = ControlMode.RANDOM;
     private long effectStartTime = 0;
-    private final int minDisplaySeconds = 2;
+    private long frameNumber = 0;
+    private final int minDisplaySeconds = 30;
     private final Random random = new Random();
     
     // Available effects
@@ -236,6 +237,7 @@ public class EffectEngine implements Runnable {
             // Initialize effect
             currentEffect.initialize(params, coordinates);
             effectStartTime = System.currentTimeMillis();
+            frameNumber = 0;
             
             System.out.println("Effect loaded: " + currentEffect.getName());
         } catch (Exception e) {
@@ -287,9 +289,8 @@ public class EffectEngine implements Runnable {
                 if (currentEffect != null) {
                     long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
                     if (elapsedSeconds < minDisplaySeconds) {
-                        // Render current effect
+                        // Render current effect at proper FPS (sleep is handled inside renderFrame)
                         renderFrame();
-                        Thread.sleep(100);
                         continue;
                     }
                 }
@@ -310,11 +311,8 @@ public class EffectEngine implements Runnable {
                     broadcastState();
                 }
                 
-                // Render current effect
+                // Render current effect (sleep is handled inside renderFrame)
                 renderFrame();
-                
-                // Small sleep to avoid busy loop
-                Thread.sleep(100);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
@@ -332,18 +330,18 @@ public class EffectEngine implements Runnable {
         if (currentEffect == null) {
             return;
         }
-        
-        long frameNumber = 0;
+
         int fps = currentEffect.getFPS();
-        long targetFrameTimeMs = 1000 / fps;
-        long startTime = System.currentTimeMillis();
-        
-        // Render frame (guard against fps being 0)
+        // Guard against fps being 0
         if (fps <= 0) {
             fps = 30; // Default fallback FPS
         }
-        double timeSeconds = frameNumber / (double) fps;
+        long targetFrameTimeMs = 1000 / fps;
+        long startTime = System.currentTimeMillis();
+
+        double timeSeconds = (System.currentTimeMillis() - effectStartTime) / 1000.0;
         Map<Integer, Color> pixels = currentEffect.renderFrame(frameNumber, timeSeconds);
+        frameNumber++;
         
         // Render to hardware (only if LED strip is available)
         if (mainStrip != null) {
