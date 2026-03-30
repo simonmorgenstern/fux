@@ -49,6 +49,9 @@ public class PreviewHttpServer {
         // Preview GIF endpoint
         httpServer.createContext("/api/preview", new PreviewHttpHandler(effectEngine));
         
+        // Effects listing and detail endpoints
+        httpServer.createContext("/api/effects", new EffectsHttpHandler());
+        
         // Health check endpoint
         httpServer.createContext("/health", exchange -> {
             try {
@@ -70,6 +73,10 @@ public class PreviewHttpServer {
             try {
                 String response = "Fux Preview API\n" +
                     "================\n\n" +
+                    "GET /api/effects - List all available LED effects\n" +
+                    "Response: JSON array with effect metadata (name, description, parameters, tags)\n\n" +
+                    "GET /api/effects/{name} - Get details for a specific effect\n" +
+                    "Response: JSON object with full effect metadata\n\n" +
                     "POST /api/preview - Generate animated GIF preview\n" +
                     "Request body (JSON):\n" +
                     "  {\n" +
