@@ -46,5 +46,30 @@
     "ranges": [
       { "start": 238, "end": 267 }
     ]
+  },
+  {
+    "name": "eyes",
+    "ranges": [
+      { "start": 34, "end": 67 },
+      { "start": 204, "end": 237 }
+    ]
+  },
+  {
+    "name": "diamond",
+    "ranges": [
+      { "start": 68, "end": 101 },
+      { "start": 102, "end": 135 },
+      { "start": 136, "end": 169 },
+      { "start": 170, "end": 203 }
+    ]
+  },
+  {
+    "name": "outside",
+    "ranges": [
+      { "start": 0, "end": 33 },
+      { "start": 34, "end": 67 },
+      { "start": 204, "end": 237 },
+      { "start": 238, "end": 267 }
+    ]
   }
 ]
