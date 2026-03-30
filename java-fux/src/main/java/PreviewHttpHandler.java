@@ -129,109 +129,101 @@ public class PreviewHttpHandler implements HttpHandler {
     /**
      * Generate animated GIF for an effect
      */
-    private byte[] generatePreviewGif(String effectName, double duration, int fps, int pixelSize) 
+    private byte[] generatePreviewGif(String effectName, double duration, int fps, int pixelSize)
             throws Exception {
-        
+
         // Create renderer
         PreviewRenderer renderer = new PreviewRenderer(pixelSize);
-        
-        // Load effect
-        Effect effect = instantiateEffect(effectName);
-        if (effect == null) {
+
+        // Load effect definition from JSON (same lookup as EffectEngine)
+        JsonObject effectDef = loadEffectDefinition(effectName);
+        if (effectDef == null) {
             throw new IllegalArgumentException("Unknown effect: " + effectName);
         }
-        
-        // Initialize effect with default parameters
-        JsonObject params = getDefaultEffectParams(effectName);
+
+        String algorithm = effectDef.get("algorithm").getAsString();
+        JsonObject params = effectDef.getAsJsonObject("parameters");
+
+        Effect effect = instantiateEffect(algorithm);
+        if (effect == null) {
+            throw new IllegalArgumentException("Unknown algorithm: " + algorithm);
+        }
+
         effect.initialize(params, renderer.getCoordinates());
-        
+
         // Calculate frame count
         int frameCount = Math.max(1, (int) (duration * fps));
-        
+
         logger.info("Rendering {} frames for effect: {}", frameCount, effectName);
-        
+
         // Render frames
         List<BufferedImage> frames = renderer.renderFrames(effect, frameCount, fps);
-        
+
         // Encode to GIF
         int frameDelayMs = 1000 / fps;
         GifEncoder encoder = new GifEncoder(frameDelayMs, true);
-        
+
         ByteArrayOutputStream gifOutput = new ByteArrayOutputStream();
         encoder.encode(frames, gifOutput);
-        
+
         // Cleanup
         effect.dispose();
-        
+
         return gifOutput.toByteArray();
     }
-    
+
     /**
-     * Get default parameters for an effect
+     * Load effect definition JSON, trying the effect name directly and also
+     * as a normalized algorithm ID (lowercase, spaces to underscores).
      */
-    private JsonObject getDefaultEffectParams(String effectName) {
-        JsonObject params = new JsonObject();
-        
-        // Set sensible defaults for common parameters
-        switch (effectName.toLowerCase()) {
-            case "sparkle":
-                params.addProperty("density", 10);
-                params.addProperty("color_mode", "rainbow");
-                params.addProperty("fade_frames", 5);
-                params.addProperty("brightness", 1.0);
-                params.addProperty("fps", 15);
-                break;
-            case "rainbow_pulse":
-                params.addProperty("speed", 0.5);
-                params.addProperty("brightness", 0.8);
-                params.addProperty("fps", 20);
-                break;
-            case "radial_wave":
-                params.addProperty("speed", 1.0);
-                params.addProperty("radius", 50.0);
-                params.addProperty("color", "#FF0000");
-                params.addProperty("fps", 15);
-                break;
-            case "breathing":
-                params.addProperty("speed", 1.0);
-                params.addProperty("color", "#00FF00");
-                params.addProperty("fps", 15);
-                break;
-            case "fire":
-                params.addProperty("heat", 0.7);
-                params.addProperty("speed", 1.0);
-                params.addProperty("fps", 20);
-                break;
-            case "gradient":
-                params.addProperty("speed", 0.5);
-                params.addProperty("color1", "#FF0000");
-                params.addProperty("color2", "#0000FF");
-                params.addProperty("fps", 15);
-                break;
-            case "rain":
-                params.addProperty("drop_count", 20);
-                params.addProperty("speed", 1.0);
-                params.addProperty("color", "#0080FF");
-                params.addProperty("fps", 20);
-                break;
-            case "motion_blur":
-                params.addProperty("speed", 1.0);
-                params.addProperty("blur_amount", 3);
-                params.addProperty("fps", 20);
-                break;
-            default:
-                // Generic defaults
-                params.addProperty("fps", 15);
-                params.addProperty("speed", 1.0);
-                params.addProperty("brightness", 0.8);
-                break;
+    private JsonObject loadEffectDefinition(String effectName) {
+        // Try the name as-is first, then normalized
+        String[] namesToTry = {
+            effectName,
+            effectName.toLowerCase().replace(" ", "_")
+        };
+
+        Gson localGson = new Gson();
+
+        for (String name : namesToTry) {
+            String[] pathsToTry = {
+                "/home/pi/fux-effects/" + name + ".json",
+                name + ".json",
+                "effects/" + name + ".json",
+                "../effects/" + name + ".json"
+            };
+
+            for (String path : pathsToTry) {
+                try {
+                    return localGson.fromJson(new java.io.FileReader(path), JsonObject.class);
+                } catch (java.io.FileNotFoundException e) {
+                    // Try next path
+                }
+            }
+
+            // Try classpath
+            String[] classpathPaths = {"animations/", "effects/"};
+            for (String classpathDir : classpathPaths) {
+                try {
+                    InputStream is = getClass().getClassLoader()
+                        .getResourceAsStream(classpathDir + name + ".json");
+                    if (is != null) {
+                        JsonObject def = localGson.fromJson(
+                            new java.io.InputStreamReader(is), JsonObject.class);
+                        is.close();
+                        return def;
+                    }
+                } catch (Exception e) {
+                    // Try next
+                }
+            }
         }
-        
-        return params;
+
+        return null;
     }
-    
+
     /**
-     * Instantiate effect by name (mirrored from EffectRenderer)
+     * Instantiate effect by algorithm name
      */
     private Effect instantiateEffect(String algorithm) {
         switch (algorithm.toLowerCase()) {
