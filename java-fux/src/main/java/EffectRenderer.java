@@ -174,10 +174,10 @@ public class EffectRenderer implements Runnable {
     private void clearAllLEDs() {
         try {
             for (int i = 0; i < MAIN_LED_COUNT; i++) {
-                mainStrip.setPixel(i, 0, 0, 0);
+                mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             for (int i = 0; i < SIDE_LED_COUNT; i++) {
-                sideStrip.setPixel(i, 0, 0, 0);
+                sideStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             mainStrip.render();
             sideStrip.render();
@@ -236,10 +236,10 @@ public class EffectRenderer implements Runnable {
         
         // Clear all LEDs first
         for (int i = 0; i < MAIN_LED_COUNT; i++) {
-            mainStrip.setPixel(i, 0, 0, 0);
+            mainStrip.setPixelColourRGB(i, 0, 0, 0);
         }
         for (int i = 0; i < SIDE_LED_COUNT; i++) {
-            sideStrip.setPixel(i, 0, 0, 0);
+            sideStrip.setPixelColourRGB(i, 0, 0, 0);
         }
         
         // Apply pixels
@@ -248,9 +248,9 @@ public class EffectRenderer implements Runnable {
             Color color = entry.getValue();
             
             if (index < MAIN_LED_COUNT) {
-                mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
+                mainStrip.setPixelColourRGB(index, color.getRed(), color.getGreen(), color.getBlue());
             } else if (index < MAIN_LED_COUNT + SIDE_LED_COUNT) {
-                sideStrip.setPixel(index - MAIN_LED_COUNT, color.getRed(), color.getGreen(), color.getBlue());
+                sideStrip.setPixelColourRGB(index - MAIN_LED_COUNT, color.getRed(), color.getGreen(), color.getBlue());
             }
         }
         

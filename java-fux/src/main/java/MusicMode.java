@@ -104,7 +104,7 @@ public class MusicMode implements Runnable{
                 for (ParsedFrame f: currentAnimation.getFrames()) {
                     int[][] changes = f.getParsedChanges();
                     for(int index = 0; index < changes.length; index ++) {
-                        fuxStrip.setPixel(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
+                        fuxStrip.setPixelColourRGB(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
                     }
                     fuxStrip.render();
                     try {
@@ -124,7 +124,7 @@ public class MusicMode implements Runnable{
 
     private void clearLEDs() {
         for (int i = 0; i < 268; i++) {
-            this.fuxStrip.setPixel(i, 0, 0, 0);
+            this.fuxStrip.setPixelColourRGB(i, 0, 0, 0);
         }
         this.fuxStrip.render();
     }

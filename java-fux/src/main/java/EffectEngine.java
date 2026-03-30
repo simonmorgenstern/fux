@@ -273,13 +273,13 @@ public class EffectEngine implements Runnable {
     private void clearAllLEDs() {
         if (mainStrip != null) {
             for (int i = 0; i < 268; i++) {
-                mainStrip.setPixel(i, 0, 0, 0);
+                mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             mainStrip.render();
         }
         if (sideStrip != null) {
             for (int i = 0; i < 120; i++) {
-                sideStrip.setPixel(i, 0, 0, 0);
+                sideStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             sideStrip.render();
         }
@@ -357,10 +357,10 @@ public class EffectEngine implements Runnable {
         if (mainStrip != null && sideStrip != null) {
             // Clear all LEDs first
             for (int i = 0; i < 268; i++) {
-                mainStrip.setPixel(i, 0, 0, 0);
+                mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             for (int i = 0; i < 120; i++) {
-                sideStrip.setPixel(i, 0, 0, 0);
+                sideStrip.setPixelColourRGB(i, 0, 0, 0);
             }
             
             // Apply pixels
@@ -369,9 +369,9 @@ public class EffectEngine implements Runnable {
                 Color color = entry.getValue();
                 
                 if (index < 268) {
-                    mainStrip.setPixel(index, color.getRed(), color.getGreen(), color.getBlue());
+                    mainStrip.setPixelColourRGB(index, color.getRed(), color.getGreen(), color.getBlue());
                 } else if (index < 388) {
-                    sideStrip.setPixel(index - 268, color.getRed(), color.getGreen(), color.getBlue());
+                    sideStrip.setPixelColourRGB(index - 268, color.getRed(), color.getGreen(), color.getBlue());
                 }
             }
             

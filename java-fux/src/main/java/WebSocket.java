@@ -252,7 +252,7 @@ public class WebSocket extends WebSocketServer {
                     for (ParsedFrame frame: this.parsedFrames) {
                         int[][] changes = frame.getParsedChanges();
                         for(int index = 0; index < changes.length; index ++) {
-                           fuxStrip.setPixel(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
+                           fuxStrip.setPixelColourRGB(changes[index][0], changes[index][1], changes[index][2], changes[index][3]);
                         }
                         try {
                             Thread.sleep(frame.getDuration());
@@ -308,9 +308,9 @@ public class WebSocket extends WebSocketServer {
         // Clear LEDs if hardware available
         if (fuxStrip != null && sideStrip != null) {
             for (int i = 0; i < 268; i++) {
-                fuxStrip.setPixel(i, 0, 0, 0);
+                fuxStrip.setPixelColourRGB(i, 0, 0, 0);
                 if (i < 120) {
-                    sideStrip.setPixel(i, 0, 0, 0);
+                    sideStrip.setPixelColourRGB(i, 0, 0, 0);
                 }
             }
             fuxStrip.render();
