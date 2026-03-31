@@ -41,13 +41,7 @@ public class EffectsHttpHandler implements HttpHandler {
         "eye_blink",
         "diamond_pulse",
         "box_wave",
-        "outside_spin",
-        // New effects
-        "comet",
-        "scanner",
-        "twinkle",
-        "theater_chase",
-        "box_cascade"
+        "outside_spin"
     };
     
     @Override
