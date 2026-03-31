@@ -27,7 +27,6 @@ public class EffectsHttpHandler implements HttpHandler {
         "radial_wave",
         "rainbow_pulse",
         "sparkle",
-        "fire",
         "breathing",
         "snake",
         "meteor_shower",
@@ -41,8 +40,7 @@ public class EffectsHttpHandler implements HttpHandler {
         "eye_blink",
         "diamond_pulse",
         "box_wave",
-        "outside_spin",
-        "realistic_fire"
+        "outside_spin"
     };
     
     @Override
