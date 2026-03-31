@@ -53,44 +53,63 @@ public class FireEffect implements Effect {
             System.out.println("FireEffect.renderFrame: coords.getCount()=" + coords.getCount() + ", heat.length=" + heat.length);
         }
         
-        // Step 1: Cool down every LED
+        // Step 1: Cool down every LED (more aggressive cooling)
         for (int i = 0; i < coords.getCount(); i++) {
-            // Random cooling amount (0 to cooling * 20)
-            int cooldown = (int)(random.nextDouble() * cooling * 20);
+            // Stronger cooling: 0 to cooling * 50 (instead of * 20)
+            int cooldown = (int)(random.nextDouble() * cooling * 50);
             heat[i] = Math.max(0, heat[i] - cooldown);
         }
         
-        // Step 2: Heat diffusion (heat rises)
-        // Simplified: just blur heat slightly
+        // Step 2: Heat diffusion using spatial proximity
+        // Find nearby LEDs in 3D space (not just array index)
         int[] newHeat = new int[coords.getCount()];
         for (int i = 0; i < coords.getCount(); i++) {
-            // Average with neighbors (simplified - just +/-1 LED)
-            int sum = heat[i] * 2;  // Weight center more
-            int count = 2;
+            // Self-weighted heavily (heat tends to stay)
+            double sum = heat[i] * 3.0;
+            double count = 3.0;
             
-            if (i > 0) {
-                sum += heat[i-1];
-                count++;
-            }
-            if (i < coords.getCount() - 1) {
-                sum += heat[i+1];
-                count++;
+            // Find spatially near LEDs (within 50 units)
+            PixelCoordinate myCoord = coords.get(i);
+            for (int j = 0; j < coords.getCount(); j++) {
+                if (i == j) continue;
+                
+                PixelCoordinate otherCoord = coords.get(j);
+                double dx = otherCoord.getX() - myCoord.getX();
+                double dy = otherCoord.getY() - myCoord.getY();
+                double distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 50) {
+                    // Closer = more weight
+                    double weight = 1.0 - (distance / 50.0);
+                    sum += heat[j] * weight;
+                    count += weight;
+                }
             }
             
-            newHeat[i] = sum / count;
+            newHeat[i] = (int)(sum / count);
         }
         heat = newHeat;
         
-        // Step 3: Add random sparks
-        // Randomly ignite LEDs across entire display
+        // Step 3: Add random sparks (more aggressive ignition)
+        // Ignite bottom LEDs more, but allow sparks anywhere
         for (int i = 0; i < coords.getCount(); i++) {
-            // Use sparking probability for all pixels
-            double sparkChance = sparking * 0.5;  // Scale to reasonable ignition rate
+            PixelCoordinate led = coords.get(i);
+            
+            // Base spark probability (much higher than before)
+            double sparkChance = sparking * 1.5;  // Now ~70% per LED
+            
+            // Increase ignition chance near the "bottom" (high Y values)
+            // Assuming Y ranges from 0-600, bottom is Y > 400
+            if (led.getY() > 400) {
+                sparkChance *= 2.0;  // Double the chance at the bottom
+            }
+            
+            sparkChance = Math.min(1.0, sparkChance);  // Cap at 100%
             
             if (random.nextDouble() < sparkChance) {
-                // Ignite this LED
-                int spark = 160 + random.nextInt(96);  // 160-255
-                heat[i] = Math.min(255, heat[i] + (int)(spark * intensity));
+                // Ignite this LED with more intensity
+                int spark = 200 + random.nextInt(56);  // 200-255 (higher minimum heat)
+                heat[i] = Math.min(255, heat[i] + (int)(spark * intensity * 1.5));
             }
         }
         
