@@ -145,6 +145,21 @@ public class WebSocket extends WebSocketServer {
                 return;
             }
             
+            if (message.equals("MODE:IDLE")) {
+                effectEngine.setMode(ControlMode.IDLE);
+                System.out.println("Mode set to IDLE");
+                return;
+            }
+            
+            // Idle mode: play effect indefinitely
+            // Format: IDLE:effect_name
+            if (message.startsWith("IDLE:")) {
+                String effectName = message.substring(5).trim();
+                effectEngine.playIdle(effectName);
+                System.out.println("Playing idle effect: " + effectName);
+                return;
+            }
+            
             // Queue operations
             // Format: ADD_QUEUE:effect_name[:duration=X][:repeat=Y]
             if (message.startsWith("ADD_QUEUE:")) {

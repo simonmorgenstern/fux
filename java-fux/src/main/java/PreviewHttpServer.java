@@ -55,6 +55,9 @@ public class PreviewHttpServer {
         // Queue control endpoint
         httpServer.createContext("/api/queue", new QueueHttpHandler(effectEngine));
         
+        // Idle mode endpoint
+        httpServer.createContext("/api/idle", new IdleHttpHandler(effectEngine));
+        
         // Health check endpoint
         httpServer.createContext("/health", exchange -> {
             try {
@@ -101,6 +104,13 @@ public class PreviewHttpServer {
                     "Response: JSON with mode, current effect, queue contents, and remaining time\n\n" +
                     "DELETE /api/queue - Clear the queue\n" +
                     "Response: JSON with success confirmation\n\n" +
+                    "POST /api/idle - Set effect to play indefinitely (idle mode)\n" +
+                    "Request body (JSON):\n" +
+                    "  {\n" +
+                    "    \"effect\": \"effect_name\"   (required, e.g., \"diamond_pulse\", \"aurora\")\n" +
+                    "  }\n\n" +
+                    "Response: JSON with success status and mode set to IDLE\n" +
+                    "Note: Effect plays continuously until replaced by another idle/queue command\n\n" +
                     "GET /health - Health check\n";
                 
                 byte[] responseBytes = response.getBytes("UTF-8");

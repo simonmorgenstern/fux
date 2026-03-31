@@ -74,6 +74,37 @@ public class EffectEngine implements Runnable {
         broadcastState();
     }
     
+    /**
+     * Play an effect in IDLE mode (runs indefinitely until replaced)
+     */
+    public void playIdle(String effectName) {
+        if (!availableEffects.contains(effectName)) {
+            broadcastError("Unknown effect: " + effectName);
+            return;
+        }
+        
+        // Switch to IDLE mode
+        this.mode = ControlMode.IDLE;
+        
+        // Clear queue (idle mode ignores queue)
+        effectQueue.clear();
+        
+        // Load effect with indefinite duration (-1)
+        loadEffectIndefinite(effectName);
+        
+        System.out.println("Idle mode activated with effect: " + effectName);
+        broadcastState();
+    }
+    
+    /**
+     * Load effect for indefinite duration (idle mode)
+     */
+    private void loadEffectIndefinite(String effectName) {
+        // Use special queue entry with duration -1 (indefinite)
+        QueueEntry indefiniteEntry = new QueueEntry(effectName, -1, null);
+        loadEffect(effectName, indefiniteEntry);
+    }
+    
     public void addToQueue(QueueEntry entry) {
         if (!availableEffects.contains(entry.getEffectName())) {
             broadcastError("Unknown effect: " + entry.getEffectName());
@@ -115,6 +146,12 @@ public class EffectEngine implements Runnable {
         if (currentEffect == null || effectStartTime == 0) {
             return null;
         }
+        
+        // In IDLE mode, return null (indefinite)
+        if (mode == ControlMode.IDLE || currentEffectDuration == -1) {
+            return null;
+        }
+        
         long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
         int remaining = currentEffectDuration - (int) elapsedSeconds;
         return remaining > 0 ? remaining : 0;
@@ -299,6 +336,14 @@ public class EffectEngine implements Runnable {
                 // If we have a current effect, ensure min display time before switching
                 if (currentEffect != null) {
                     long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
+                    
+                    // In IDLE mode, play effect indefinitely (duration == -1)
+                    if (mode == ControlMode.IDLE) {
+                        renderFrame();
+                        continue;
+                    }
+                    
+                    // In other modes, check duration
                     if (elapsedSeconds < currentEffectDuration) {
                         // Render current effect at proper FPS (sleep is handled inside renderFrame)
                         renderFrame();
@@ -314,15 +359,20 @@ public class EffectEngine implements Runnable {
                         loadEffect(entry.getEffectName(), entry);
                         broadcastState();
                     }
-                } else { // RANDOM mode
+                } else if (mode == ControlMode.RANDOM) {
                     // Pick a random effect
                     String nextEffect = availableEffects.get(random.nextInt(availableEffects.size()));
                     loadEffect(nextEffect, null);
                     broadcastState();
+                } else if (mode == ControlMode.IDLE) {
+                    // In idle mode, wait for new commands (no auto-switching)
+                    Thread.sleep(100);
                 }
                 
                 // Render current effect (sleep is handled inside renderFrame)
-                renderFrame();
+                if (currentEffect != null) {
+                    renderFrame();
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;

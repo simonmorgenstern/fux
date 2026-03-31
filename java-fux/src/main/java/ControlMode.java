@@ -1,4 +1,5 @@
 public enum ControlMode {
     RANDOM,
-    QUEUE
+    QUEUE,
+    IDLE
 }
