@@ -124,7 +124,9 @@ public class PreviewRenderer {
             canvasY = Math.max(0, Math.min(canvasHeight - 1, canvasY));
             
             // Set pixel with anti-aliasing by filling a small area
-            int radius = Math.max(1, pixelSize / 4);
+            // Smaller pixelSize = larger canvas = need bigger radius to fill it
+            // Use inverse scaling: radius proportional to 1/pixelSize
+            int radius = Math.max(1, Math.round(8.0f / pixelSize));
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dy = -radius; dy <= radius; dy++) {
                     int px = canvasX + dx;
