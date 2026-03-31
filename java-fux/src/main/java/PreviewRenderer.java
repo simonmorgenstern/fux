@@ -100,6 +100,9 @@ public class PreviewRenderer {
         // Get frame data from effect
         Map<Integer, Color> pixels = effect.renderFrame(frameNumber, timeSeconds);
         
+        int renderedCount = 0;
+        int skippedCount = 0;
+        
         // Render pixels - map LED coordinates to canvas
         for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
             int ledIndex = entry.getKey();
@@ -107,13 +110,17 @@ public class PreviewRenderer {
             
             // Only render first 268 LEDs (main strip)
             if (ledIndex >= MAIN_LED_COUNT || ledIndex >= coordinates.getCount()) {
+                skippedCount++;
                 continue;
             }
             
             PixelCoordinate coord = coordinates.get(ledIndex);
             if (coord == null) {
+                skippedCount++;
                 continue;
             }
+            
+            renderedCount++;
             
             // Map LED coordinate to canvas position
             int canvasX = (int) ((coord.getX() - offsetX) / scaleX);
@@ -136,6 +143,11 @@ public class PreviewRenderer {
                     }
                 }
             }
+        }
+        
+        if (frameNumber == 0) {
+            System.out.println("PreviewRenderer.renderFrame frame 0: rendered=" + renderedCount + ", skipped=" + skippedCount + 
+                ", total=" + pixels.size() + ", canvas=" + canvasWidth + "x" + canvasHeight);
         }
         
         return image;

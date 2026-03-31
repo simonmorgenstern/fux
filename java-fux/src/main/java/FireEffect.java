@@ -49,6 +49,10 @@ public class FireEffect implements Effect {
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         Map<Integer, Color> pixels = new HashMap<>();
         
+        if (frameNumber == 0) {
+            System.out.println("FireEffect.renderFrame: coords.getCount()=" + coords.getCount() + ", heat.length=" + heat.length);
+        }
+        
         // Step 1: Cool down every LED
         for (int i = 0; i < coords.getCount(); i++) {
             // Random cooling amount (0 to cooling * 20)
@@ -111,6 +115,10 @@ public class FireEffect implements Effect {
             
             // Always render all pixels (including dark ones)
             pixels.put(i, color);
+        }
+        
+        if (frameNumber == 0) {
+            System.out.println("FireEffect.renderFrame returned " + pixels.size() + " pixels");
         }
         
         return pixels;
