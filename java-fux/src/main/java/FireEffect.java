@@ -78,35 +78,21 @@ public class FireEffect implements Effect {
         heat = newHeat;
         
         // Step 3: Add random sparks
-        // Randomly ignite LEDs based on their Y position (bottom = more likely)
+        // Randomly ignite LEDs across entire display
         for (int i = 0; i < coords.getCount(); i++) {
-            PixelCoordinate led = coords.get(i);
+            // Use sparking probability for all pixels
+            double sparkChance = sparking * 0.5;  // Scale to reasonable ignition rate
             
-            // Calculate fire likelihood based on Y position
-            // Higher Y (bottom) = more fire
-            double maxY = 600.0;  // Approximate max Y
-            double yFactor = Math.min(1.0, led.getY() / maxY);
-            
-            // Bottom third of fox = fire zone
-            if (yFactor > 0.6) {
-                double sparkChance = sparking * (yFactor - 0.6) * 2.5;  // 0.0 to ~1.0
-                
-                if (random.nextDouble() < sparkChance) {
-                    // Ignite this LED
-                    int spark = 160 + random.nextInt(96);  // 160-255
-                    heat[i] = Math.min(255, heat[i] + (int)(spark * intensity));
-                }
+            if (random.nextDouble() < sparkChance) {
+                // Ignite this LED
+                int spark = 160 + random.nextInt(96);  // 160-255
+                heat[i] = Math.min(255, heat[i] + (int)(spark * intensity));
             }
         }
         
         // Step 4: Convert heat to color
         for (int i = 0; i < coords.getCount(); i++) {
             int h = heat[i];
-            
-            if (h < 20) {
-                // Too dark - skip
-                continue;
-            }
             
             Color color;
             if (h < 85) {
@@ -123,6 +109,7 @@ public class FireEffect implements Effect {
                 color = new Color(255, 255, Math.min(255, b));
             }
             
+            // Always render all pixels (including dark ones)
             pixels.put(i, color);
         }
         
