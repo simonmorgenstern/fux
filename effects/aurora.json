@@ -7,9 +7,9 @@
   "fps": 30,
   "duration": 30,
   "parameters": {
-    "wave_speed": 3.0,
-    "wave_height": 50,
-    "num_waves": 2,
-    "brightness": 0.9
+    "wave_speed": 0.5,
+    "wave_height": 250,
+    "num_waves": 3,
+    "brightness": 0.8
   }
 }

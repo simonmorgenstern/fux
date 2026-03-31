@@ -102,11 +102,11 @@ public class AuroraEffect implements Effect {
                 }
             }
             
-            // Normalize and apply brightness
+            // Normalize by total intensity to get correct blended color, then apply brightness
             if (totalIntensity > 0) {
-                int r = (int)Math.min(255, totalR * brightness);
-                int g = (int)Math.min(255, totalG * brightness);
-                int b = (int)Math.min(255, totalB * brightness);
+                int r = (int)Math.min(255, (totalR / totalIntensity) * brightness);
+                int g = (int)Math.min(255, (totalG / totalIntensity) * brightness);
+                int b = (int)Math.min(255, (totalB / totalIntensity) * brightness);
                 
                 if (r > 10 || g > 10 || b > 10) {
                     pixels.put(ledIndex, new Color(r, g, b));
