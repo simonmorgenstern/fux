@@ -169,7 +169,6 @@ public class EffectRenderer implements Runnable {
             case "radial_wave": return new RadialWaveEffect();
             case "rainbow_pulse": return new RainbowPulseEffect();
             case "sparkle": return new SparkleEffect();
-            case "fire": return new FireEffect();
             case "breathing": return new BreathingEffect();
             case "snake": return new SnakeEffect();
             case "meteor_shower": return new MeteorShowerEffect();
