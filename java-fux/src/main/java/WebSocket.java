@@ -124,10 +124,10 @@ public class WebSocket extends WebSocketServer {
         
         try {
             // Check if effect engine commands are available
-            if (!isHardwareAvailable && 
-                (message.startsWith("MODE:") || message.startsWith("ADD_QUEUE:") || 
-                 message.equals("CLEAR_QUEUE") || message.equals("GET_STATE") || 
-                 message.equals("STOP_EFFECT"))) {
+            if (!isHardwareAvailable &&
+                (message.startsWith("MODE:") || message.startsWith("ADD_QUEUE:") ||
+                 message.equals("CLEAR_QUEUE") || message.equals("GET_STATE") ||
+                 message.equals("STOP_EFFECT") || message.equals("MODE:OFF"))) {
                 webSocket.send("{\"error\":\"Command not available in preview-only mode. Use /api/preview endpoint instead.\"}");
                 return;
             }
@@ -150,7 +150,13 @@ public class WebSocket extends WebSocketServer {
                 System.out.println("Mode set to IDLE");
                 return;
             }
-            
+
+            if (message.equals("MODE:OFF")) {
+                effectEngine.turnOff();
+                System.out.println("Mode set to OFF");
+                return;
+            }
+
             // Idle mode: play effect indefinitely
             // Format: IDLE:effect_name
             if (message.startsWith("IDLE:")) {

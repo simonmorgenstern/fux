@@ -75,6 +75,18 @@ public class EffectEngine implements Runnable {
     }
     
     /**
+     * Turn off all LEDs (OFF mode)
+     */
+    public void turnOff() {
+        this.mode = ControlMode.OFF;
+        this.currentEffect = null;
+        effectQueue.clear();
+        clearAllLEDs();
+        System.out.println("OFF mode activated - all LEDs cleared");
+        broadcastState();
+    }
+
+    /**
      * Play an effect in IDLE mode (runs indefinitely until replaced)
      */
     public void playIdle(String effectName) {
@@ -147,8 +159,8 @@ public class EffectEngine implements Runnable {
             return null;
         }
         
-        // In IDLE mode, return null (indefinite)
-        if (mode == ControlMode.IDLE || currentEffectDuration == -1) {
+        // In IDLE/OFF mode, return null (indefinite)
+        if (mode == ControlMode.IDLE || mode == ControlMode.OFF || currentEffectDuration == -1) {
             return null;
         }
         
@@ -342,6 +354,12 @@ public class EffectEngine implements Runnable {
                         renderFrame();
                         continue;
                     }
+
+                    // In OFF mode, skip rendering
+                    if (mode == ControlMode.OFF) {
+                        Thread.sleep(100);
+                        continue;
+                    }
                     
                     // In other modes, check duration
                     if (elapsedSeconds < currentEffectDuration) {
@@ -366,6 +384,9 @@ public class EffectEngine implements Runnable {
                     broadcastState();
                 } else if (mode == ControlMode.IDLE) {
                     // In idle mode, wait for new commands (no auto-switching)
+                    Thread.sleep(100);
+                } else if (mode == ControlMode.OFF) {
+                    // In OFF mode, keep LEDs dark and wait for new commands
                     Thread.sleep(100);
                 }
                 

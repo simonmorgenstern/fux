@@ -57,6 +57,9 @@ public class PreviewHttpServer {
         
         // Idle mode endpoint
         httpServer.createContext("/api/idle", new IdleHttpHandler(effectEngine));
+
+        // OFF mode endpoint
+        httpServer.createContext("/api/off", new OffHttpHandler(effectEngine));
         
         // Health check endpoint
         httpServer.createContext("/health", exchange -> {
@@ -111,6 +114,9 @@ public class PreviewHttpServer {
                     "  }\n\n" +
                     "Response: JSON with success status and mode set to IDLE\n" +
                     "Note: Effect plays continuously until replaced by another idle/queue command\n\n" +
+                    "POST /api/off - Turn off all LEDs (OFF mode)\n" +
+                    "Request body: none required\n" +
+                    "Response: JSON with success status and mode set to OFF\n\n" +
                     "GET /health - Health check\n";
                 
                 byte[] responseBytes = response.getBytes("UTF-8");
