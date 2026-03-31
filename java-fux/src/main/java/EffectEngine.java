@@ -46,6 +46,7 @@ public class EffectEngine implements Runnable {
         add("diamond_pulse");
         add("box_wave");
         add("outside_spin");
+        add("realistic_fire");
     }};
     
     // Callback for state updates
@@ -281,6 +282,9 @@ public class EffectEngine implements Runnable {
                     break;
                 case "outside_spin":
                     currentEffect = new OutsideSpinEffect();
+                    break;
+                case "realistic_fire":
+                    currentEffect = new RealisticFireEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);
