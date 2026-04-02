@@ -6,12 +6,14 @@ public class SnakeEffect implements Effect {
     private PixelCoordinates coords;
     private LEDNeighborGraph graph;
     private LinkedList<Integer> snakeBody;
+    private Set<Integer> recentlyVisited; // prevents jumping back in crowded areas
+    private static final int VISITED_MEMORY = 12;
     private int foodLED;
     private Random random;
     private int fps;
     private int moveEveryNFrames;
     private int frameCounter;
-    
+
     // Colors
     private Color snakeHeadColor;
     private Color snakeBodyColor;
@@ -46,15 +48,17 @@ public class SnakeEffect implements Effect {
         
         // Initialize snake (4 LEDs long, random start position)
         this.snakeBody = new LinkedList<>();
-        
+        this.recentlyVisited = new LinkedHashSet<>();
+
         // Safety check: ensure coordinates are loaded
         if (coords == null || coords.getCount() == 0) {
             System.err.println("SnakeEffect: Cannot initialize - no coordinates available");
             throw new RuntimeException("SnakeEffect requires valid LED coordinates");
         }
-        
+
         int startLED = random.nextInt(coords.getCount());
         snakeBody.add(startLED);
+        recentlyVisited.add(startLED);
         
         // Grow initial snake by following neighbors
         for (int i = 1; i < 4; i++) {
@@ -125,39 +129,92 @@ public class SnakeEffect implements Effect {
     private void moveSnake() {
         int currentHead = snakeBody.getLast();
         List<Integer> possibleMoves = graph.getNeighbors(currentHead);
-        
+
         if (possibleMoves.isEmpty()) {
-            // No neighbors - snake is stuck, don't move
             return;
         }
-        
+
         // Remove moves that would collide with snake body (except tail, which will move)
         List<Integer> validMoves = new ArrayList<>();
         for (int move : possibleMoves) {
-            // Allow moving to tail position (it will be gone next frame)
             if (!snakeBody.contains(move) || move == snakeBody.getFirst()) {
                 validMoves.add(move);
             }
         }
-        
-        // If no valid moves, just pick any neighbor
+
         if (validMoves.isEmpty()) {
             validMoves = possibleMoves;
         }
-        
-        // Choose random valid move
-        int nextLED = validMoves.get(random.nextInt(validMoves.size()));
-        
+
+        // Prefer LEDs not recently visited to avoid jumping back in crowded areas
+        List<Integer> freshMoves = new ArrayList<>();
+        for (int move : validMoves) {
+            if (!recentlyVisited.contains(move)) {
+                freshMoves.add(move);
+            }
+        }
+
+        List<Integer> candidates = freshMoves.isEmpty() ? validMoves : freshMoves;
+
+        // Pick the candidate that best continues the current direction of travel.
+        // This gives the snake momentum so it glides through dense LED clusters
+        // instead of zigzagging.
+        int nextLED;
+        if (snakeBody.size() >= 2) {
+            int prevLED = snakeBody.get(snakeBody.size() - 2);
+            PixelCoordinate prevCoord = coords.get(prevLED);
+            PixelCoordinate headCoord = coords.get(currentHead);
+
+            double dirX = headCoord.getX() - prevCoord.getX();
+            double dirY = headCoord.getY() - prevCoord.getY();
+            double dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+
+            if (dirLen > 0.001) {
+                dirX /= dirLen;
+                dirY /= dirLen;
+
+                // Score each candidate by how well it continues the direction
+                int bestCandidate = candidates.get(0);
+                double bestScore = Double.NEGATIVE_INFINITY;
+                for (int c : candidates) {
+                    PixelCoordinate cCoord = coords.get(c);
+                    double cx = cCoord.getX() - headCoord.getX();
+                    double cy = cCoord.getY() - headCoord.getY();
+                    double cLen = Math.sqrt(cx * cx + cy * cy);
+                    if (cLen > 0.001) {
+                        double dot = (cx / cLen) * dirX + (cy / cLen) * dirY;
+                        // Add small random jitter so the snake isn't perfectly deterministic
+                        double score = dot + random.nextDouble() * 0.3;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestCandidate = c;
+                        }
+                    }
+                }
+                nextLED = bestCandidate;
+            } else {
+                nextLED = candidates.get(random.nextInt(candidates.size()));
+            }
+        } else {
+            nextLED = candidates.get(random.nextInt(candidates.size()));
+        }
+
+        // Update visited memory
+        recentlyVisited.add(nextLED);
+        if (recentlyVisited.size() > VISITED_MEMORY) {
+            Iterator<Integer> it = recentlyVisited.iterator();
+            it.next();
+            it.remove();
+        }
+
         // Move head to new position
         snakeBody.add(nextLED);
-        
+
         // Check if snake ate food
         if (nextLED == foodLED) {
-            // Don't remove tail (snake grows)
             spawnFood();
             System.out.println("Snake ate food! Length: " + snakeBody.size() + ", new food: " + foodLED);
         } else {
-            // Remove tail (snake moves, doesn't grow)
             snakeBody.removeFirst();
         }
     }
