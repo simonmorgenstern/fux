@@ -36,18 +36,11 @@ public class EffectsHttpHandler implements HttpHandler {
         "bilateral_fill",
         "motion_blur",
         "gradient",
-        "box_mirror",
-        "eye_blink",
         "diamond_pulse",
-        "box_wave",
         "outside_spin",
         "heartbeat",
         "lava_lamp",
-        "contour_trace",
-        "firefly",
-        "plasma",
-        "wave_collapse",
-        "drip"
+        "contour_trace"
     };
     
     @Override

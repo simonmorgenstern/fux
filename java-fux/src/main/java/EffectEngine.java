@@ -40,18 +40,11 @@ public class EffectEngine implements Runnable {
         add("bilateral_fill");
         add("motion_blur");
         add("gradient");
-        add("box_mirror");
-        add("eye_blink");
         add("diamond_pulse");
-        add("box_wave");
         add("outside_spin");
         add("heartbeat");
         add("lava_lamp");
         add("contour_trace");
-        add("firefly");
-        add("plasma");
-        add("wave_collapse");
-        add("drip");
     }};
     
     // Callback for state updates
@@ -270,17 +263,8 @@ public class EffectEngine implements Runnable {
                 case "gradient":
                     currentEffect = new GradientEffect();
                     break;
-                case "box_mirror":
-                    currentEffect = new BoxMirrorEffect();
-                    break;
-                case "eye_blink":
-                    currentEffect = new EyeBlinkEffect();
-                    break;
                 case "diamond_pulse":
                     currentEffect = new DiamondPulseEffect();
-                    break;
-                case "box_wave":
-                    currentEffect = new BoxWaveEffect();
                     break;
                 case "outside_spin":
                     currentEffect = new OutsideSpinEffect();
@@ -293,18 +277,6 @@ public class EffectEngine implements Runnable {
                     break;
                 case "contour_trace":
                     currentEffect = new ContourTraceEffect();
-                    break;
-                case "firefly":
-                    currentEffect = new FireflyEffect();
-                    break;
-                case "plasma":
-                    currentEffect = new PlasmaEffect();
-                    break;
-                case "wave_collapse":
-                    currentEffect = new WaveCollapseEffect();
-                    break;
-                case "drip":
-                    currentEffect = new DripEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

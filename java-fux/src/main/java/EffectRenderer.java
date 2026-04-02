@@ -178,10 +178,7 @@ public class EffectRenderer implements Runnable {
             case "bilateral_fill": return new BilateralFillEffect();
             case "motion_blur": return new MotionBlurEffect();
             case "gradient": return new GradientEffect();
-            case "box_mirror": return new BoxMirrorEffect();
-            case "eye_blink": return new EyeBlinkEffect();
             case "diamond_pulse": return new DiamondPulseEffect();
-            case "box_wave": return new BoxWaveEffect();
             case "outside_spin": return new OutsideSpinEffect();
             // New effects
             case "comet": return new CometEffect();
@@ -192,10 +189,6 @@ public class EffectRenderer implements Runnable {
             case "heartbeat": return new HeartbeatEffect();
             case "lava_lamp": return new LavaLampEffect();
             case "contour_trace": return new ContourTraceEffect();
-            case "firefly": return new FireflyEffect();
-            case "plasma": return new PlasmaEffect();
-            case "wave_collapse": return new WaveCollapseEffect();
-            case "drip": return new DripEffect();
             default: return null;
         }
     }
