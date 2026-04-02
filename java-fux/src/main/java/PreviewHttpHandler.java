@@ -257,6 +257,9 @@ public class PreviewHttpHandler implements HttpHandler {
             case "diamond_pulse": return new DiamondPulseEffect();
             case "box_wave": return new BoxWaveEffect();
             case "outside_spin": return new OutsideSpinEffect();
+            case "heartbeat": return new HeartbeatEffect();
+            case "lava_lamp": return new LavaLampEffect();
+            case "contour_trace": return new ContourTraceEffect();
             default: return null;
         }
     }
