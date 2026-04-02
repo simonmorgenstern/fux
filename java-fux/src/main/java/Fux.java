@@ -17,6 +17,17 @@ public class Fux {
             WebSocket ws = new WebSocket(port);
             ws.start();
             System.out.println("Fux running on port: " + port);
+
+            // Shutdown hook: clear LEDs and stop cleanly on Ctrl+C
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("Shutting down - clearing LEDs...");
+                ws.shutdown();
+                try {
+                    ws.stop(1000);
+                } catch (Exception e) {
+                    // Ignore errors during shutdown
+                }
+            }));
         }
         catch (Exception e) {
             System.out.println(e.getMessage());

@@ -340,6 +340,26 @@ public class WebSocket extends WebSocketServer {
         }
     }
 
+    /**
+     * Clean shutdown: stop engine, clear LEDs, stop HTTP server.
+     * Called from JVM shutdown hook on Ctrl+C.
+     */
+    public void shutdown() {
+        if (effectEngine != null) {
+            effectEngine.stop();
+        }
+        stopMusicMode();
+        if (fuxStrip != null) {
+            for (int i = 0; i < 268; i++) {
+                fuxStrip.setPixelColourRGB(i, 0, 0, 0);
+            }
+            fuxStrip.render();
+        }
+        if (previewHttpServer != null) {
+            previewHttpServer.stop();
+        }
+    }
+
     @Override
     public void onError(org.java_websocket.WebSocket webSocket, Exception error) {
         error.printStackTrace();
