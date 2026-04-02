@@ -6,8 +6,8 @@ public class SnakeEffect implements Effect {
     private PixelCoordinates coords;
     private LEDNeighborGraph graph;
     private LinkedList<Integer> snakeBody;
-    private Set<Integer> recentlyVisited; // prevents jumping back in crowded areas
-    private static final int VISITED_MEMORY = 6;
+    private int[] lastVisitedAt; // move number when each LED was last visited
+    private int moveCount;
     private int foodLED;
     private Random random;
     private int fps;
@@ -48,7 +48,7 @@ public class SnakeEffect implements Effect {
         
         // Initialize snake (4 LEDs long, random start position)
         this.snakeBody = new LinkedList<>();
-        this.recentlyVisited = new LinkedHashSet<>();
+        this.moveCount = 0;
 
         // Safety check: ensure coordinates are loaded
         if (coords == null || coords.getCount() == 0) {
@@ -56,9 +56,12 @@ public class SnakeEffect implements Effect {
             throw new RuntimeException("SnakeEffect requires valid LED coordinates");
         }
 
+        // Track when each LED was last visited (0 = never)
+        this.lastVisitedAt = new int[coords.getCount()];
+
         int startLED = random.nextInt(coords.getCount());
         snakeBody.add(startLED);
-        recentlyVisited.add(startLED);
+        lastVisitedAt[startLED] = 1;
         
         // Grow initial snake by following neighbors
         for (int i = 1; i < 4; i++) {
@@ -127,6 +130,7 @@ public class SnakeEffect implements Effect {
     }
     
     private void moveSnake() {
+        moveCount++;
         int currentHead = snakeBody.getLast();
         List<Integer> possibleMoves = graph.getNeighbors(currentHead);
 
@@ -146,27 +150,34 @@ public class SnakeEffect implements Effect {
             validMoves = possibleMoves;
         }
 
-        // Prefer LEDs not recently visited to avoid jumping back in crowded areas
-        List<Integer> freshMoves = new ArrayList<>();
-        for (int move : validMoves) {
-            if (!recentlyVisited.contains(move)) {
-                freshMoves.add(move);
+        // Weight each candidate by how long ago it was last visited.
+        // LEDs never visited (0) or visited long ago get high weight,
+        // pulling the snake toward unexplored interior areas.
+        double[] weights = new double[validMoves.size()];
+        double totalWeight = 0;
+        for (int i = 0; i < validMoves.size(); i++) {
+            int led = validMoves.get(i);
+            int age = moveCount - lastVisitedAt[led]; // large if visited long ago
+            if (lastVisitedAt[led] == 0) {
+                age = moveCount + 100; // never visited — strong preference
+            }
+            weights[i] = age * age; // square to strongly favor least-recently-visited
+            totalWeight += weights[i];
+        }
+
+        // Weighted random selection
+        double roll = random.nextDouble() * totalWeight;
+        int nextLED = validMoves.get(validMoves.size() - 1);
+        double cumulative = 0;
+        for (int i = 0; i < validMoves.size(); i++) {
+            cumulative += weights[i];
+            if (roll < cumulative) {
+                nextLED = validMoves.get(i);
+                break;
             }
         }
 
-        List<Integer> candidates = freshMoves.isEmpty() ? validMoves : freshMoves;
-
-        // Pick randomly among candidates — the visited memory already prevents
-        // jumping back, no directional bias needed
-        int nextLED = candidates.get(random.nextInt(candidates.size()));
-
-        // Update visited memory
-        recentlyVisited.add(nextLED);
-        if (recentlyVisited.size() > VISITED_MEMORY) {
-            Iterator<Integer> it = recentlyVisited.iterator();
-            it.next();
-            it.remove();
-        }
+        lastVisitedAt[nextLED] = moveCount;
 
         // Move head to new position
         snakeBody.add(nextLED);
