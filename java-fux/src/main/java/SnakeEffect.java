@@ -7,7 +7,7 @@ public class SnakeEffect implements Effect {
     private LEDNeighborGraph graph;
     private LinkedList<Integer> snakeBody;
     private Set<Integer> recentlyVisited; // prevents jumping back in crowded areas
-    private static final int VISITED_MEMORY = 12;
+    private static final int VISITED_MEMORY = 6;
     private int foodLED;
     private Random random;
     private int fps;
@@ -26,8 +26,8 @@ public class SnakeEffect implements Effect {
         this.fps = params.has("fps") ? params.get("fps").getAsInt() : 30;
         
         // Snake movement speed (frames per move)
-        this.moveEveryNFrames = params.has("move_every_n_frames") ? 
-            params.get("move_every_n_frames").getAsInt() : 3;
+        this.moveEveryNFrames = params.has("move_every_n_frames") ?
+            params.get("move_every_n_frames").getAsInt() : 2;
         this.frameCounter = 0;
         
         // Build neighbor graph
@@ -156,48 +156,9 @@ public class SnakeEffect implements Effect {
 
         List<Integer> candidates = freshMoves.isEmpty() ? validMoves : freshMoves;
 
-        // Pick the candidate that best continues the current direction of travel.
-        // This gives the snake momentum so it glides through dense LED clusters
-        // instead of zigzagging.
-        int nextLED;
-        if (snakeBody.size() >= 2) {
-            int prevLED = snakeBody.get(snakeBody.size() - 2);
-            PixelCoordinate prevCoord = coords.get(prevLED);
-            PixelCoordinate headCoord = coords.get(currentHead);
-
-            double dirX = headCoord.getX() - prevCoord.getX();
-            double dirY = headCoord.getY() - prevCoord.getY();
-            double dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
-
-            if (dirLen > 0.001) {
-                dirX /= dirLen;
-                dirY /= dirLen;
-
-                // Score each candidate by how well it continues the direction
-                int bestCandidate = candidates.get(0);
-                double bestScore = Double.NEGATIVE_INFINITY;
-                for (int c : candidates) {
-                    PixelCoordinate cCoord = coords.get(c);
-                    double cx = cCoord.getX() - headCoord.getX();
-                    double cy = cCoord.getY() - headCoord.getY();
-                    double cLen = Math.sqrt(cx * cx + cy * cy);
-                    if (cLen > 0.001) {
-                        double dot = (cx / cLen) * dirX + (cy / cLen) * dirY;
-                        // Add small random jitter so the snake isn't perfectly deterministic
-                        double score = dot + random.nextDouble() * 0.3;
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestCandidate = c;
-                        }
-                    }
-                }
-                nextLED = bestCandidate;
-            } else {
-                nextLED = candidates.get(random.nextInt(candidates.size()));
-            }
-        } else {
-            nextLED = candidates.get(random.nextInt(candidates.size()));
-        }
+        // Pick randomly among candidates — the visited memory already prevents
+        // jumping back, no directional bias needed
+        int nextLED = candidates.get(random.nextInt(candidates.size()));
 
         // Update visited memory
         recentlyVisited.add(nextLED);
