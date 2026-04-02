@@ -78,9 +78,22 @@ public class PreviewHttpHandler implements HttpHandler {
         }
         
         String effectName = request.get("effect").getAsString();
-        double duration = request.has("duration") ? request.get("duration").getAsDouble() : 2.0;
         int fps = request.has("fps") ? request.get("fps").getAsInt() : 15;
         int pixelSize = request.has("pixelSize") ? request.get("pixelSize").getAsInt() : 8;
+
+        // Duration defaults to the effect's own duration from its JSON definition.
+        // If the request specifies a duration, use that instead.
+        double duration;
+        if (request.has("duration")) {
+            duration = request.get("duration").getAsDouble();
+        } else {
+            JsonObject effectDef = loadEffectDefinition(effectName);
+            if (effectDef != null && effectDef.has("duration")) {
+                duration = effectDef.get("duration").getAsDouble();
+            } else {
+                duration = 2.0;
+            }
+        }
         
         // Validate parameters
         if (fps < 1 || fps > 60) {

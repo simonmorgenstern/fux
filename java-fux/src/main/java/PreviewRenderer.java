@@ -130,12 +130,16 @@ public class PreviewRenderer {
             canvasX = Math.max(0, Math.min(canvasWidth - 1, canvasX));
             canvasY = Math.max(0, Math.min(canvasHeight - 1, canvasY));
             
-            // Set pixel with anti-aliasing by filling a small area
+            // Set pixel as a circle by filling a small area with distance check
             // Smaller pixelSize = larger canvas = need bigger radius to fill it
             // Use inverse scaling: radius proportional to 1/pixelSize
             int radius = Math.max(1, Math.round(8.0f / pixelSize));
+            int radiusSq = radius * radius;
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dy = -radius; dy <= radius; dy++) {
+                    if (dx * dx + dy * dy > radiusSq) {
+                        continue; // skip pixels outside the circle
+                    }
                     int px = canvasX + dx;
                     int py = canvasY + dy;
                     if (px >= 0 && px < canvasWidth && py >= 0 && py < canvasHeight) {
