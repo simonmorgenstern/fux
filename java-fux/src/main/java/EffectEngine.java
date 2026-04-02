@@ -48,6 +48,10 @@ public class EffectEngine implements Runnable {
         add("heartbeat");
         add("lava_lamp");
         add("contour_trace");
+        add("firefly");
+        add("plasma");
+        add("wave_collapse");
+        add("drip");
     }};
     
     // Callback for state updates
@@ -289,6 +293,18 @@ public class EffectEngine implements Runnable {
                     break;
                 case "contour_trace":
                     currentEffect = new ContourTraceEffect();
+                    break;
+                case "firefly":
+                    currentEffect = new FireflyEffect();
+                    break;
+                case "plasma":
+                    currentEffect = new PlasmaEffect();
+                    break;
+                case "wave_collapse":
+                    currentEffect = new WaveCollapseEffect();
+                    break;
+                case "drip":
+                    currentEffect = new DripEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

@@ -260,6 +260,10 @@ public class PreviewHttpHandler implements HttpHandler {
             case "heartbeat": return new HeartbeatEffect();
             case "lava_lamp": return new LavaLampEffect();
             case "contour_trace": return new ContourTraceEffect();
+            case "firefly": return new FireflyEffect();
+            case "plasma": return new PlasmaEffect();
+            case "wave_collapse": return new WaveCollapseEffect();
+            case "drip": return new DripEffect();
             default: return null;
         }
     }

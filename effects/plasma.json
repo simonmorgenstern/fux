@@ -1,0 +1,15 @@
+{
+  "name": "Plasma",
+  "description": "Psychedelic flowing plasma patterns across the fox using overlapping sine waves",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "plasma",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "speed": 1.0,
+    "scale": 0.01,
+    "saturation": 0.9,
+    "brightness": 1.0
+  }
+}
