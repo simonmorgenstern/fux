@@ -345,18 +345,16 @@ public class WebSocket extends WebSocketServer {
      * Called from JVM shutdown hook on Ctrl+C.
      */
     public void shutdown() {
-        if (effectEngine != null) {
-            effectEngine.stop();
-        }
-        stopMusicMode();
-        if (fuxStrip != null) {
-            for (int i = 0; i < 268; i++) {
-                fuxStrip.setPixelColourRGB(i, 0, 0, 0);
+        try {
+            if (effectEngine != null) {
+                effectEngine.stop();
             }
-            fuxStrip.render();
-        }
-        if (previewHttpServer != null) {
-            previewHttpServer.stop();
+            stopMusicMode();
+            if (previewHttpServer != null) {
+                previewHttpServer.stop();
+            }
+        } catch (Exception e) {
+            System.err.println("Error during shutdown: " + e.getMessage());
         }
     }
 
