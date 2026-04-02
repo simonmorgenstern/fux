@@ -1,0 +1,14 @@
+{
+  "name": "Drop Pulse",
+  "description": "Energy builds from edges inward then explodes from center like a beat drop",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "drop_pulse",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "drop_rate": 0.5,
+    "build_ratio": 0.7,
+    "brightness": 1.0
+  }
+}

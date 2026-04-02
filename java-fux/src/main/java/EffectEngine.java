@@ -45,6 +45,11 @@ public class EffectEngine implements Runnable {
         add("heartbeat");
         add("lava_lamp");
         add("contour_trace");
+        add("strobe");
+        add("body_flash");
+        add("ripple_burst");
+        add("color_chase");
+        add("drop_pulse");
     }};
     
     // Callback for state updates
@@ -277,6 +282,21 @@ public class EffectEngine implements Runnable {
                     break;
                 case "contour_trace":
                     currentEffect = new ContourTraceEffect();
+                    break;
+                case "strobe":
+                    currentEffect = new StrobeEffect();
+                    break;
+                case "body_flash":
+                    currentEffect = new BodyFlashEffect();
+                    break;
+                case "ripple_burst":
+                    currentEffect = new RippleBurstEffect();
+                    break;
+                case "color_chase":
+                    currentEffect = new ColorChaseEffect();
+                    break;
+                case "drop_pulse":
+                    currentEffect = new DropPulseEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

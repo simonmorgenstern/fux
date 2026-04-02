@@ -1,0 +1,15 @@
+{
+  "name": "Color Chase",
+  "description": "Vivid color groups racing around the fox outline with pulsing brightness",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "color_chase",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "chase_count": 3,
+    "speed": 60.0,
+    "tail_length": 15,
+    "brightness": 1.0
+  }
+}

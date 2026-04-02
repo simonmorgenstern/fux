@@ -1,0 +1,15 @@
+{
+  "name": "Strobe",
+  "description": "Fast color-cycling strobe with sharp brightness transitions",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "strobe",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "flash_rate": 4.0,
+    "on_ratio": 0.3,
+    "white_chance": 0.15,
+    "brightness": 1.0
+  }
+}

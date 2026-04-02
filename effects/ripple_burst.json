@@ -1,0 +1,16 @@
+{
+  "name": "Ripple Burst",
+  "description": "Bright color explosions rippling outward from random impact points",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "ripple_burst",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "spawn_rate": 3.0,
+    "expand_speed": 150.0,
+    "ring_width": 30.0,
+    "max_radius": 250.0,
+    "brightness": 1.0
+  }
+}

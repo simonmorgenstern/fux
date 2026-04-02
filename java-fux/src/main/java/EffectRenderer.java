@@ -189,6 +189,11 @@ public class EffectRenderer implements Runnable {
             case "heartbeat": return new HeartbeatEffect();
             case "lava_lamp": return new LavaLampEffect();
             case "contour_trace": return new ContourTraceEffect();
+            case "strobe": return new StrobeEffect();
+            case "body_flash": return new BodyFlashEffect();
+            case "ripple_burst": return new RippleBurstEffect();
+            case "color_chase": return new ColorChaseEffect();
+            case "drop_pulse": return new DropPulseEffect();
             default: return null;
         }
     }

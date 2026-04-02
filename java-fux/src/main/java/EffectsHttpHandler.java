@@ -40,7 +40,12 @@ public class EffectsHttpHandler implements HttpHandler {
         "outside_spin",
         "heartbeat",
         "lava_lamp",
-        "contour_trace"
+        "contour_trace",
+        "strobe",
+        "body_flash",
+        "ripple_burst",
+        "color_chase",
+        "drop_pulse"
     };
     
     @Override
