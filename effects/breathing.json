@@ -7,8 +7,8 @@
   "fps": 30,
   "duration": 20,
   "parameters": {
-    "breath_rate": 2.0,
-    "min_brightness": 0.2,
+    "breath_rate": 12.0,
+    "min_brightness": 0.05,
     "max_brightness": 1.0,
     "color": [100, 150, 255]
   }
