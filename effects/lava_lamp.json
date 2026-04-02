@@ -1,0 +1,15 @@
+{
+  "name": "Lava Lamp",
+  "description": "Warm glowing blobs rise organically through the fox body from tail to ears",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "lava_lamp",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "blob_count": 5,
+    "speed": 1.5,
+    "blob_radius": 80,
+    "brightness": 1.0
+  }
+}

@@ -45,6 +45,9 @@ public class EffectEngine implements Runnable {
         add("diamond_pulse");
         add("box_wave");
         add("outside_spin");
+        add("heartbeat");
+        add("lava_lamp");
+        add("contour_trace");
     }};
     
     // Callback for state updates
@@ -277,6 +280,15 @@ public class EffectEngine implements Runnable {
                     break;
                 case "outside_spin":
                     currentEffect = new OutsideSpinEffect();
+                    break;
+                case "heartbeat":
+                    currentEffect = new HeartbeatEffect();
+                    break;
+                case "lava_lamp":
+                    currentEffect = new LavaLampEffect();
+                    break;
+                case "contour_trace":
+                    currentEffect = new ContourTraceEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

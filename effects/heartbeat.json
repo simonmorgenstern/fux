@@ -1,0 +1,14 @@
+{
+  "name": "Heartbeat",
+  "description": "A lifelike double-pulse heartbeat that radiates from the fox's center outward",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "heartbeat",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "bpm": 72,
+    "pulse_width": 0.3,
+    "brightness": 1.0
+  }
+}

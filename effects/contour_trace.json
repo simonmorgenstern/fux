@@ -1,0 +1,15 @@
+{
+  "name": "Contour Trace",
+  "description": "A rainbow light traces the fox's silhouette outline with a glowing trail",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "contour_trace",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "speed": 30,
+    "trail_length": 20,
+    "hue_shift": 0.3,
+    "brightness": 1.0
+  }
+}

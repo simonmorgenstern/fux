@@ -189,6 +189,9 @@ public class EffectRenderer implements Runnable {
             case "twinkle": return new TwinkleEffect();
             case "theater_chase": return new TheaterChaseEffect();
             case "box_cascade": return new BoxCascadeEffect();
+            case "heartbeat": return new HeartbeatEffect();
+            case "lava_lamp": return new LavaLampEffect();
+            case "contour_trace": return new ContourTraceEffect();
             default: return null;
         }
     }
