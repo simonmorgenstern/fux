@@ -336,22 +336,26 @@ public class EffectEngine implements Runnable {
         running = false;
         if (renderThread != null) {
             try {
-                renderThread.join(1000);
+                renderThread.join(2000);
             } catch (InterruptedException e) {
                 // Ignore
             }
         }
-        
-        // Clear LEDs
+        System.out.println("EffectEngine thread terminated");
+
         clearAllLEDs();
     }
-    
+
     private void clearAllLEDs() {
         if (mainStrip != null) {
-            for (int i = 0; i < 268; i++) {
-                mainStrip.setPixelColourRGB(i, 0, 0, 0);
+            try {
+                for (int i = 0; i < 268; i++) {
+                    mainStrip.setPixelColourRGB(i, 0, 0, 0);
+                }
+                mainStrip.render();
+            } catch (Exception e) {
+                // Native strip may already be torn down, ignore
             }
-            mainStrip.render();
         }
     }
     

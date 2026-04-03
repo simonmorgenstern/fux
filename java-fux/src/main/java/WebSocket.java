@@ -333,10 +333,14 @@ public class WebSocket extends WebSocketServer {
         
         // Clear LEDs if hardware available
         if (fuxStrip != null) {
-            for (int i = 0; i < 268; i++) {
-                fuxStrip.setPixelColourRGB(i, 0, 0, 0);
+            try {
+                for (int i = 0; i < 268; i++) {
+                    fuxStrip.setPixelColourRGB(i, 0, 0, 0);
+                }
+                fuxStrip.render();
+            } catch (Exception e) {
+                // Native strip may already be torn down, ignore
             }
-            fuxStrip.render();
         }
     }
 
