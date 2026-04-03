@@ -104,6 +104,7 @@
                     <button id="mode-chain" class="btn">Chain</button>
                 </div>
                 <button id="undo-btn" class="btn">Undo</button>
+                <button id="dead-ends-btn" class="btn">Show Dead Ends</button>
                 <button id="auto-connect-btn" class="btn warn">Auto-Connect Nearby</button>
                 <button id="clear-all-btn" class="btn danger">Clear All</button>
                 <div class="status-bar" id="status-bar">
@@ -149,10 +150,12 @@
         let pendingLED = null; // first LED in a connect/chain action
         let hoveredLED = null;
         let lastChainLED = null; // for chain mode continuity
+        let showDeadEnds = false;
 
         const canvas = document.getElementById('led-canvas');
         const ctx = canvas.getContext('2d');
         const LED_RADIUS = 6;
+        const DEAD_END_COLOR = '#ef4444';
         const CONNECT_LINE_COLOR = '#22d3ee';
         const PENDING_COLOR = '#fbbf24';
         const HOVER_COLOR = '#a78bfa';
@@ -229,6 +232,24 @@
             return s;
         }
 
+        function getDegreeMap() {
+            const deg = {};
+            connections.forEach(([a, b]) => {
+                deg[a] = (deg[a] || 0) + 1;
+                deg[b] = (deg[b] || 0) + 1;
+            });
+            return deg;
+        }
+
+        function getDeadEnds() {
+            const deg = getDegreeMap();
+            const deadEnds = new Set();
+            for (let i = 0; i < leds.length; i++) {
+                if ((deg[i] || 0) === 1) deadEnds.add(i);
+            }
+            return deadEnds;
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = BG_COLOR;
@@ -264,17 +285,23 @@
             }
 
             // Draw LEDs
+            const deadEnds = showDeadEnds ? getDeadEnds() : new Set();
+
             leds.forEach(led => {
                 const p = ledToCanvas(led);
                 const isPending = led.index === pendingLED;
                 const isHovered = hoveredLED && led.index === hoveredLED.index;
                 const isConnected = connectedSet.has(led.index);
+                const isDeadEnd = deadEnds.has(led.index);
 
+                const radius = (isPending || isDeadEnd) ? LED_RADIUS + 3 : LED_RADIUS;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, isPending ? LED_RADIUS + 3 : LED_RADIUS, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
 
                 if (isPending) {
                     ctx.fillStyle = PENDING_COLOR;
+                } else if (isDeadEnd) {
+                    ctx.fillStyle = DEAD_END_COLOR;
                 } else if (isHovered) {
                     ctx.fillStyle = HOVER_COLOR;
                 } else if (isConnected) {
@@ -283,16 +310,16 @@
                     ctx.fillStyle = LED_COLOR;
                 }
                 ctx.fill();
-                ctx.strokeStyle = isPending ? '#fff' : (isConnected ? '#93c5fd' : '#334155');
-                ctx.lineWidth = isPending ? 2 : 1;
+                ctx.strokeStyle = isDeadEnd ? '#fff' : (isPending ? '#fff' : (isConnected ? '#93c5fd' : '#334155'));
+                ctx.lineWidth = (isPending || isDeadEnd) ? 2 : 1;
                 ctx.stroke();
 
-                // Draw index label for pending/hovered
-                if (isPending || isHovered) {
+                // Draw index label for pending/hovered/dead-end
+                if (isPending || isHovered || isDeadEnd) {
                     ctx.fillStyle = '#fff';
                     ctx.font = '11px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText(led.index, p.x, p.y - LED_RADIUS - 6);
+                    ctx.fillText(led.index, p.x, p.y - radius - 4);
                 }
             });
         }
@@ -563,6 +590,19 @@
         document.getElementById('mode-delete').addEventListener('click', () => setMode('delete'));
         document.getElementById('mode-chain').addEventListener('click', () => setMode('chain'));
         document.getElementById('undo-btn').addEventListener('click', undo);
+        document.getElementById('dead-ends-btn').addEventListener('click', () => {
+            showDeadEnds = !showDeadEnds;
+            const btn = document.getElementById('dead-ends-btn');
+            btn.classList.toggle('active', showDeadEnds);
+            btn.textContent = showDeadEnds ? 'Hide Dead Ends' : 'Show Dead Ends';
+            const deadEnds = getDeadEnds();
+            if (showDeadEnds && deadEnds.size > 0) {
+                setStatus(`<span class="highlight">${deadEnds.size}</span> dead ends: LEDs ${[...deadEnds].join(', ')}`);
+            } else if (showDeadEnds) {
+                setStatus('No dead ends found!');
+            }
+            draw();
+        });
         document.getElementById('auto-connect-btn').addEventListener('click', autoConnect);
         document.getElementById('clear-all-btn').addEventListener('click', clearAll);
 
