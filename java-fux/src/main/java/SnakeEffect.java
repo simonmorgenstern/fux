@@ -55,7 +55,7 @@ public class SnakeEffect implements Effect {
         // Initialize snake body along a valid path
         this.snakeBody = new LinkedList<>();
         this.moveCount = 0;
-        initSnakeBody(4);
+        initSnakeBody(2);
 
         spawnFood();
 
@@ -159,29 +159,32 @@ public class SnakeEffect implements Effect {
         return pixels;
     }
 
-    private void moveSnake() {
-        moveCount++;
+    private List<Integer> getValidMoves() {
         int head = snakeBody.getLast();
         List<Integer> possibleMoves = graph.getNeighbors(head);
-
-        if (possibleMoves.isEmpty()) return;
-
-        // Filter out all body collisions — no exceptions
-        List<Integer> validMoves = new ArrayList<>();
         Set<Integer> bodySet = new HashSet<>(snakeBody);
+        List<Integer> valid = new ArrayList<>();
         for (int move : possibleMoves) {
             if (!bodySet.contains(move)) {
-                validMoves.add(move);
+                valid.add(move);
             }
+        }
+        return valid;
+    }
+
+    private void moveSnake() {
+        moveCount++;
+
+        // Find valid moves (not occupied by the snake body)
+        List<Integer> validMoves = getValidMoves();
+
+        // If stuck, shrink tail until we have a move or reach minimum size
+        while (validMoves.isEmpty() && snakeBody.size() > 1) {
+            snakeBody.removeFirst();
+            validMoves = getValidMoves();
         }
 
-        // If stuck, shrink the tail to free up space and retry
-        if (validMoves.isEmpty()) {
-            if (snakeBody.size() > 2) {
-                snakeBody.removeFirst();
-            }
-            return;
-        }
+        if (validMoves.isEmpty()) return;
 
         // Use BFS to find which moves bring us closer to food
         int[] distToFood = bfsDistances(foodLED);
