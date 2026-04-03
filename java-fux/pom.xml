@@ -60,6 +60,7 @@
                     <include>effects/*.json</include>
                     <include>assets/pixelCoordinates.json</include>
                     <include>led-namer/led-groups.json</include>
+                    <include>led-namer/led-connections.json</include>
                 </includes>
             </resource>
         </resources>

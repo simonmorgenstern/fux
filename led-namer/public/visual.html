@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Group Editor - FUX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #60a5fa;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 30px;
+            min-height: 0;
+        }
+        .canvas-section {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+        }
+        .canvas-container {
+            flex: 1;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1e293b;
+            min-height: 400px;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .mode-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            padding: 10px 18px;
+            background: #334155;
+            color: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #475569;
+        }
+        .btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn.danger {
+            background: #ef4444;
+        }
+        .btn.danger:hover {
+            background: #dc2626;
+        }
+        .btn.success {
+            background: #10b981;
+        }
+        .btn.success:hover {
+            background: #059669;
+        }
+        .group-input {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            gap: 10px;
+        }
+        .group-input input {
+            flex: 1;
+            padding: 10px 15px;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+        .group-input input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .sidebar {
+            flex: 1;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            overflow: hidden;
+        }
+        .sidebar h2 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #60a5fa;
+        }
+        .saved-groups {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .group-item {
+            background: #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 4px solid #3b82f6;
+        }
+        .group-item:hover {
+            background: #475569;
+        }
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .group-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .group-count {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .group-indices {
+            font-size: 13px;
+            color: #cbd5e1;
+            word-break: break-all;
+            max-height: 60px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .empty-message {
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+            padding: 20px;
+        }
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #64748b;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #60a5fa;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LED Group Editor</h1>
+        <p class="subtitle">Select LEDs on the canvas using click, box, or brush mode, name the group, and save for use in effects. | <a href="/connections.html" style="color:#60a5fa;">Connection Editor</a></p>
+    </header>
+
+    <div class="main-content">
+        <section class="canvas-section">
+            <div class="canvas-container">
+                <div class="loading" id="loading">Loading LED coordinates...</div>
+                <canvas id="led-canvas"></canvas>
+            </div>
+            <div class="controls">
+                <div class="mode-buttons">
+                    <button id="mode-click" class="btn active">Click</button>
+                    <button id="mode-box" class="btn">Box</button>
+                    <button id="mode-brush" class="btn">Brush</button>
+                </div>
+                <button id="clear-selection" class="btn">Clear Selection</button>
+                <button id="select-all" class="btn">Select All</button>
+                <button id="invert-selection" class="btn">Invert</button>
+                <div class="group-input">
+                    <input type="text" id="group-name" placeholder="Enter group name (e.g., 'Left Strip')" maxlength="50">
+                    <button id="save-group" class="btn success">Save Group</button>
+                </div>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <h2>Saved Groups</h2>
+            <div class="saved-groups" id="saved-groups">
+                <div class="empty-message">No groups saved yet.</div>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <p>LED coordinates from /api/coords • Use click, box, or brush to select LEDs • Saved groups stored in led-groups.json</p>
+    </footer>
+
+    <script>
+        // Simple LED Canvas Implementation
+        class LEDCanvas {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.leds = [];
+                this.selectedIndices = new Set();
+                this.selectionMode = 'click';
+                this.isDragging = false;
+                this.isPainting = false;
+                this.dragStart = { x: 0, y: 0 };
+                this.dragEnd = { x: 0, y: 0 };
+                
+                this.ledRadius = options.ledRadius || 5;
+                this.brushRadius = options.brushRadius || 15;
+                this.ledColor = options.ledColor || '#4b5563';
+                this.selectedColor = options.selectedColor || '#ef4444';
+                this.boxColor = options.boxColor || '#60a5fa';
+                this.backgroundColor = options.backgroundColor || '#1e293b';
+                
+                this.scale = 1;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                window.addEventListener('resize', this.handleResize.bind(this));
+                
+                this.resizeCanvas();
+            }
+            
+            resizeCanvas() {
+                const parent = this.canvas.parentElement;
+                this.canvas.width = parent.clientWidth;
+                this.canvas.height = parent.clientHeight;
+                this.fitToCanvas();
+                this.draw();
+            }
+            
+            async loadCoords() {
+                try {
+                    const response = await fetch('/api/coords');
+                    if (!response.ok) throw new Error('Failed to load coordinates');
+                    const coords = await response.json();
+                    this.leds = coords.slice(0, 268).map(c => ({
+                        x: c.x,
+                        y: c.y,
+                        index: c.index,
+                        selected: false
+                    }));
+                    console.log(`Loaded ${this.leds.length} LEDs`);
+                    this.fitToCanvas();
+                    this.draw();
+                    document.getElementById('loading').style.display = 'none';
+                } catch (err) {
+                    console.error('Error loading LED coordinates:', err);
+                    document.getElementById('loading').textContent = 'Error loading coordinates!';
+                }
+            }
+            
+            fitToCanvas() {
+                if (this.leds.length === 0) return;
+                const padding = 30;
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                
+                this.leds.forEach(led => {
+                    minX = Math.min(minX, led.x);
+                    maxX = Math.max(maxX, led.x);
+                    minY = Math.min(minY, led.y);
+                    maxY = Math.max(maxY, led.y);
+                });
+                
+                const width = maxX - minX;
+                const height = maxY - minY;
+                const scaleX = (this.canvas.width - padding * 2) / width;
+                const scaleY = (this.canvas.height - padding * 2) / height;
+                this.scale = Math.min(scaleX, scaleY);
+                this.offsetX = padding - minX * this.scale;
+                this.offsetY = padding - minY * this.scale;
+                
+                console.log(`Canvas: ${this.canvas.width}x${this.canvas.height}, Scale: ${this.scale.toFixed(2)}`);
+            }
+            
+            draw() {
+                const { ctx, canvas } = this;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = this.backgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw LEDs
+                this.leds.forEach(led => {
+                    const x = led.x * this.scale + this.offsetX;
+                    const y = led.y * this.scale + this.offsetY;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, this.ledRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = led.selected ? this.selectedColor : this.ledColor;
+                    ctx.fill();
+                    ctx.strokeStyle = led.selected ? '#fff' : '#334155';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                });
+                
+                // Draw selection box if dragging
+                if (this.isDragging && this.selectionMode === 'box') {
+                    const { x: x1, y: y1 } = this.dragStart;
+                    const { x: x2, y: y2 } = this.dragEnd;
+                    ctx.strokeStyle = this.boxColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                    ctx.setLineDash([]);
+                }
+            }
+            
+            canvasToLED(x, y) {
+                return {
+                    x: (x - this.offsetX) / this.scale,
+                    y: (y - this.offsetY) / this.scale
+                };
+            }
+            
+            findLEDAt(canvasX, canvasY, radius = 15) {
+                const led = this.canvasToLED(canvasX, canvasY);
+                let closest = null;
+                let minDist = Infinity;
+                
+                this.leds.forEach(l => {
+                    const dx = l.x - led.x;
+                    const dy = l.y - led.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < minDist && dist < radius / this.scale) {
+                        minDist = dist;
+                        closest = l;
+                    }
+                });
+                
+                return closest;
+            }
+            
+            toggleLED(led) {
+                led.selected = !led.selected;
+                if (led.selected) {
+                    this.selectedIndices.add(led.index);
+                } else {
+                    this.selectedIndices.delete(led.index);
+                }
+                this.draw();
+            }
+            
+            selectInRect(x1, y1, x2, y2) {
+                const led1 = this.canvasToLED(x1, y1);
+                const led2 = this.canvasToLED(x2, y2);
+                
+                const left = Math.min(led1.x, led2.x);
+                const right = Math.max(led1.x, led2.x);
+                const top = Math.min(led1.y, led2.y);
+                const bottom = Math.max(led1.y, led2.y);
+                
+                this.leds.forEach(led => {
+                    if (led.x >= left && led.x <= right && led.y >= top && led.y <= bottom) {
+                        led.selected = true;
+                        this.selectedIndices.add(led.index);
+                    }
+                });
+                this.draw();
+            }
+            
+            paintAtPosition(canvasX, canvasY) {
+                const centerLED = this.canvasToLED(canvasX, canvasY);
+                const brushRadiusInLEDSpace = this.brushRadius / this.scale;
+                
+                this.leds.forEach(led => {
+                    const dx = led.x - centerLED.x;
+                    const dy = led.y - centerLED.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance <= brushRadiusInLEDSpace && !led.selected) {
+                        led.selected = true;
+                        this.selectedIndices.add(led.index);
+                    }
+                });
+                
+                this.draw();
+            }
+            
+            handleMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                this.dragStart = { x, y };
+                this.dragEnd = { x, y };
+                
+                if (this.selectionMode === 'click') {
+                    const led = this.findLEDAt(x, y);
+                    if (led) {
+                        this.toggleLED(led);
+                    }
+                } else if (this.selectionMode === 'box') {
+                    this.isDragging = true;
+                } else if (this.selectionMode === 'brush') {
+                    this.isPainting = true;
+                    this.paintAtPosition(x, y);
+                }
+            }
+            
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.isPainting && this.selectionMode === 'brush') {
+                    this.paintAtPosition(x, y);
+                } else if (this.isDragging && this.selectionMode === 'box') {
+                    this.dragEnd = { x, y };
+                    this.draw();
+                }
+            }
+            
+            handleMouseUp(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.selectionMode === 'box' && this.isDragging) {
+                    this.selectInRect(this.dragStart.x, this.dragStart.y, x, y);
+                }
+                
+                this.isDragging = false;
+                this.isPainting = false;
+                this.draw();
+            }
+            
+            handleResize() {
+                this.resizeCanvas();
+            }
+        }
+        
+        // Helper functions
+        function indicesToRanges(indices) {
+            if (indices.length === 0) return [];
+            indices.sort((a, b) => a - b);
+            const ranges = [];
+            let start = indices[0];
+            let end = indices[0];
+            
+            for (let i = 1; i < indices.length; i++) {
+                if (indices[i] === end + 1) {
+                    end = indices[i];
+                } else {
+                    ranges.push({ start, end });
+                    start = indices[i];
+                    end = indices[i];
+                }
+            }
+            ranges.push({ start, end });
+            return ranges;
+        }
+        
+        function rangesToIndices(ranges) {
+            const indices = [];
+            ranges.forEach(range => {
+                for (let i = range.start; i <= range.end; i++) {
+                    indices.push(i);
+                }
+            });
+            return indices;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize app
+        let ledCanvas;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const canvas = document.getElementById('led-canvas');
+            ledCanvas = new LEDCanvas(canvas, {
+                ledRadius: 5,
+                ledColor: '#4b5563',
+                selectedColor: '#ef4444',
+                boxColor: '#60a5fa',
+                backgroundColor: '#1e293b',
+                brushRadius: 15
+            });
+            
+            await ledCanvas.loadCoords();
+            
+            // Mode buttons
+            document.getElementById('mode-click').addEventListener('click', () => {
+                document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('mode-click').classList.add('active');
+                ledCanvas.selectionMode = 'click';
+            });
+            
+            document.getElementById('mode-box').addEventListener('click', () => {
+                document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('mode-box').classList.add('active');
+                ledCanvas.selectionMode = 'box';
+            });
+            
+            document.getElementById('mode-brush').addEventListener('click', () => {
+                document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('mode-brush').classList.add('active');
+                ledCanvas.selectionMode = 'brush';
+            });
+            
+            // Clear selection
+            document.getElementById('clear-selection').addEventListener('click', () => {
+                ledCanvas.selectedIndices.clear();
+                ledCanvas.leds.forEach(led => led.selected = false);
+                ledCanvas.draw();
+            });
+            
+            // Select all
+            document.getElementById('select-all').addEventListener('click', () => {
+                ledCanvas.leds.forEach(led => {
+                    led.selected = true;
+                    ledCanvas.selectedIndices.add(led.index);
+                });
+                ledCanvas.draw();
+            });
+            
+            // Invert selection
+            document.getElementById('invert-selection').addEventListener('click', () => {
+                ledCanvas.leds.forEach(led => {
+                    led.selected = !led.selected;
+                    if (led.selected) {
+                        ledCanvas.selectedIndices.add(led.index);
+                    } else {
+                        ledCanvas.selectedIndices.delete(led.index);
+                    }
+                });
+                ledCanvas.draw();
+            });
+            
+            // Save group
+            document.getElementById('save-group').addEventListener('click', async () => {
+                const nameInput = document.getElementById('group-name');
+                const name = nameInput.value.trim();
+                
+                if (!name) {
+                    alert('Please enter a group name');
+                    return;
+                }
+                
+                const selectedIndices = Array.from(ledCanvas.selectedIndices).sort((a, b) => a - b);
+                if (selectedIndices.length === 0) {
+                    alert('Select at least one LED');
+                    return;
+                }
+                
+                const ranges = indicesToRanges(selectedIndices);
+                const group = {
+                    name,
+                    ranges,
+                    timestamp: new Date().toISOString()
+                };
+                
+                try {
+                    const response = await fetch('/api/groups', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(group)
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to save group');
+                    
+                    nameInput.value = '';
+                    ledCanvas.selectedIndices.clear();
+                    ledCanvas.leds.forEach(led => led.selected = false);
+                    ledCanvas.draw();
+                    loadGroups();
+                } catch (err) {
+                    console.error(err);
+                    alert('Error saving group');
+                }
+            });
+            
+            // Load saved groups
+            async function loadGroups() {
+                try {
+                    const response = await fetch('/api/groups');
+                    if (!response.ok) throw new Error('Failed to load groups');
+                    const groups = await response.json();
+                    const container = document.getElementById('saved-groups');
+                    
+                    if (groups.length === 0) {
+                        container.innerHTML = '<div class="empty-message">No groups saved yet.</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    groups.forEach(group => {
+                        const indices = rangesToIndices(group.ranges);
+                        const div = document.createElement('div');
+                        div.className = 'group-item';
+                        div.innerHTML = `
+                            <div class="group-header">
+                                <span class="group-name">${escapeHtml(group.name)}</span>
+                                <span class="group-count">${indices.length} LEDs</span>
+                            </div>
+                            <div class="group-indices">${group.ranges.map(r => 
+                                r.start === r.end ? r.start : `${r.start}-${r.end}`
+                            ).join(', ')}</div>
+                        `;
+                        
+                        div.addEventListener('click', () => {
+                            ledCanvas.selectedIndices.clear();
+                            ledCanvas.leds.forEach(led => led.selected = false);
+                            
+                            indices.forEach(idx => {
+                                ledCanvas.selectedIndices.add(idx);
+                                const led = ledCanvas.leds.find(l => l.index === idx);
+                                if (led) led.selected = true;
+                            });
+                            
+                            ledCanvas.draw();
+                        });
+                        
+                        container.appendChild(div);
+                    });
+                } catch (err) {
+                    console.error('Error loading groups:', err);
+                }
+            }
+            
+            loadGroups();
+        });
+    </script>
+</body>
+</html>

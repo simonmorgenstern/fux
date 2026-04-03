@@ -1,5 +1,8 @@
 controller/wpa_supplicant.conf
 
+# Node
+node_modules/
+
 # Java / Maven
 target/
 *.class

@@ -1,0 +1,15 @@
+[Unit]
+Description=Fux LED Namer Web Interface
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/fux/led-namer
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

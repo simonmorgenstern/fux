@@ -6,139 +6,167 @@ public class SnakeEffect implements Effect {
     private PixelCoordinates coords;
     private LEDNeighborGraph graph;
     private LinkedList<Integer> snakeBody;
-    private int[] lastVisitedAt; // move number when each LED was last visited
+    private int[] lastVisitedAt;
     private int moveCount;
     private int foodLED;
     private Random random;
     private int fps;
     private int moveEveryNFrames;
     private int frameCounter;
+    private int maxLength;
 
     // Colors
     private Color snakeHeadColor;
-    private Color snakeBodyColor;
     private Color foodColor;
-    
+
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
         this.coords = coords;
         this.random = new Random();
         this.fps = params.has("fps") ? params.get("fps").getAsInt() : 30;
-        
-        // Snake movement speed (frames per move)
+
         this.moveEveryNFrames = params.has("move_every_n_frames") ?
             params.get("move_every_n_frames").getAsInt() : 2;
         this.frameCounter = 0;
-        
-        // Build neighbor graph
-        double minDist = params.has("min_neighbor_distance") ? 
+        this.maxLength = params.has("max_length") ?
+            params.get("max_length").getAsInt() : 30;
+
+        // Build neighbor graph (will load led-connections.json if available)
+        double minDist = params.has("min_neighbor_distance") ?
             params.get("min_neighbor_distance").getAsDouble() : 10.0;
-        double maxDist = params.has("max_neighbor_distance") ? 
+        double maxDist = params.has("max_neighbor_distance") ?
             params.get("max_neighbor_distance").getAsDouble() : 30.0;
-        int maxNeighbors = params.has("max_neighbors") ? 
+        int maxNeighbors = params.has("max_neighbors") ?
             params.get("max_neighbors").getAsInt() : 4;
-        
+
         this.graph = new LEDNeighborGraph(coords);
         this.graph.build(minDist, maxDist, maxNeighbors);
-        
-        // Colors
-        this.snakeHeadColor = new Color(0, 255, 0);      // Bright green
-        this.snakeBodyColor = new Color(0, 150, 0);      // Dark green
-        this.foodColor = new Color(255, 0, 0);           // Red
-        
-        // Initialize snake (4 LEDs long, random start position)
-        this.snakeBody = new LinkedList<>();
-        this.moveCount = 0;
 
-        // Safety check: ensure coordinates are loaded
+        // Colors
+        this.snakeHeadColor = new Color(0, 255, 0);
+        this.foodColor = new Color(255, 0, 0);
+
         if (coords == null || coords.getCount() == 0) {
-            System.err.println("SnakeEffect: Cannot initialize - no coordinates available");
             throw new RuntimeException("SnakeEffect requires valid LED coordinates");
         }
 
-        // Track when each LED was last visited (0 = never)
         this.lastVisitedAt = new int[coords.getCount()];
 
-        int startLED = random.nextInt(coords.getCount());
-        snakeBody.add(startLED);
-        lastVisitedAt[startLED] = 1;
-        
-        // Grow initial snake by following neighbors
-        for (int i = 1; i < 4; i++) {
-            int currentHead = snakeBody.getLast();
-            List<Integer> neighbors = graph.getNeighbors(currentHead);
-            if (!neighbors.isEmpty()) {
-                int nextLED = neighbors.get(random.nextInt(neighbors.size()));
-                snakeBody.add(nextLED);
-            } else {
-                // If no neighbors, just duplicate current position
-                snakeBody.add(currentHead);
+        // Initialize snake body along a valid path
+        this.snakeBody = new LinkedList<>();
+        this.moveCount = 0;
+        initSnakeBody(4);
+
+        spawnFood();
+
+        System.out.println("SnakeEffect initialized:");
+        System.out.println("  Graph from file: " + graph.isLoadedFromFile());
+        System.out.println("  Initial length: " + snakeBody.size());
+        System.out.println("  Max length: " + maxLength);
+    }
+
+    /**
+     * Grow the initial snake along valid, non-overlapping neighbors.
+     */
+    private void initSnakeBody(int length) {
+        int start = random.nextInt(coords.getCount());
+        snakeBody.add(start);
+        lastVisitedAt[start] = 1;
+
+        for (int i = 1; i < length; i++) {
+            int head = snakeBody.getLast();
+            List<Integer> neighbors = graph.getNeighbors(head);
+            // Pick a neighbor not already in the body
+            int next = -1;
+            List<Integer> shuffled = new ArrayList<>(neighbors);
+            Collections.shuffle(shuffled, random);
+            for (int n : shuffled) {
+                if (!snakeBody.contains(n)) {
+                    next = n;
+                    break;
+                }
+            }
+            if (next == -1) break; // no valid growth direction
+            snakeBody.add(next);
+            lastVisitedAt[next] = 1;
+        }
+    }
+
+    /**
+     * Place food at least minGraphDist hops away from the snake head,
+     * so the snake has to travel to reach it.
+     */
+    private void spawnFood() {
+        int head = snakeBody.getLast();
+        int minDist = 5;
+
+        // BFS to find distances from head
+        int[] dist = bfsDistances(head);
+
+        // Collect candidates far enough from head and not on the snake body
+        List<Integer> candidates = new ArrayList<>();
+        for (int i = 0; i < coords.getCount(); i++) {
+            if (dist[i] >= minDist && !snakeBody.contains(i)) {
+                candidates.add(i);
             }
         }
-        
-        // Spawn initial food
-        spawnFood();
-        
-        System.out.println("SnakeEffect initialized:");
-        System.out.println("  Initial length: " + snakeBody.size());
-        System.out.println("  Movement speed: every " + moveEveryNFrames + " frames");
-        System.out.println("  Food LED: " + foodLED);
-    }
-    
-    private void spawnFood() {
-        // Random LED that's not part of snake
-        int attempts = 0;
-        do {
+
+        // Fallback: any LED not on the snake
+        if (candidates.isEmpty()) {
+            for (int i = 0; i < coords.getCount(); i++) {
+                if (!snakeBody.contains(i)) {
+                    candidates.add(i);
+                }
+            }
+        }
+
+        if (!candidates.isEmpty()) {
+            foodLED = candidates.get(random.nextInt(candidates.size()));
+        } else {
+            // Snake fills the whole graph — just pick random
             foodLED = random.nextInt(coords.getCount());
-            attempts++;
-        } while (snakeBody.contains(foodLED) && attempts < 100);
+        }
     }
-    
+
     @Override
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         Map<Integer, Color> pixels = new HashMap<>();
-        
-        // Move snake every N frames
+
         frameCounter++;
         if (frameCounter >= moveEveryNFrames) {
             frameCounter = 0;
             moveSnake();
         }
-        
-        // Render snake body (gradient from tail to head)
+
+        // Render snake body with gradient
         int bodySize = snakeBody.size();
         for (int i = 0; i < bodySize; i++) {
             int ledIndex = snakeBody.get(i);
-            
             if (i == bodySize - 1) {
-                // Head: bright green
                 pixels.put(ledIndex, snakeHeadColor);
             } else {
-                // Body: gradient based on position
-                double intensity = 0.3 + (0.7 * i / (double)bodySize);
-                int g = (int)(150 * intensity);
+                double t = (double) i / bodySize;
+                int g = (int)(60 + 190 * t);
                 pixels.put(ledIndex, new Color(0, g, 0));
             }
         }
-        
-        // Render food (pulsing red)
+
+        // Pulsing food
         double pulse = 0.5 + 0.5 * Math.sin(timeSeconds * 8);
-        int foodBrightness = (int)(255 * pulse);
-        pixels.put(foodLED, new Color(foodBrightness, 0, 0));
-        
+        int brightness = (int)(255 * pulse);
+        pixels.put(foodLED, new Color(brightness, 0, 0));
+
         return pixels;
     }
-    
+
     private void moveSnake() {
         moveCount++;
-        int currentHead = snakeBody.getLast();
-        List<Integer> possibleMoves = graph.getNeighbors(currentHead);
+        int head = snakeBody.getLast();
+        List<Integer> possibleMoves = graph.getNeighbors(head);
 
-        if (possibleMoves.isEmpty()) {
-            return;
-        }
+        if (possibleMoves.isEmpty()) return;
 
-        // Remove moves that would collide with snake body (except tail, which will move)
+        // Filter out body collisions (tail is OK since it will move)
         List<Integer> validMoves = new ArrayList<>();
         for (int move : possibleMoves) {
             if (!snakeBody.contains(move) || move == snakeBody.getFirst()) {
@@ -146,26 +174,54 @@ public class SnakeEffect implements Effect {
             }
         }
 
+        // If stuck, shrink the tail to free up space
         if (validMoves.isEmpty()) {
+            if (snakeBody.size() > 2) {
+                snakeBody.removeFirst();
+                return;
+            }
             validMoves = possibleMoves;
         }
 
-        // Weight each candidate by how long ago it was last visited.
-        // LEDs never visited (0) or visited long ago get high weight,
-        // pulling the snake toward unexplored interior areas.
+        // Use BFS to find which moves bring us closer to food
+        int[] distToFood = bfsDistances(foodLED);
+
+        // Weight: favor moves closer to food, break ties with recency
         double[] weights = new double[validMoves.size()];
         double totalWeight = 0;
-        for (int i = 0; i < validMoves.size(); i++) {
-            int led = validMoves.get(i);
-            int age = moveCount - lastVisitedAt[led]; // large if visited long ago
-            if (lastVisitedAt[led] == 0) {
-                age = moveCount + 100; // never visited — strong preference
+
+        // Find the best (shortest) distance to food among candidates
+        int bestFoodDist = Integer.MAX_VALUE;
+        for (int move : validMoves) {
+            if (distToFood[move] < bestFoodDist) {
+                bestFoodDist = distToFood[move];
             }
-            weights[i] = age * age; // square to strongly favor least-recently-visited
-            totalWeight += weights[i];
         }
 
-        // Weighted random selection
+        for (int i = 0; i < validMoves.size(); i++) {
+            int move = validMoves.get(i);
+            double weight;
+
+            if (distToFood[move] <= bestFoodDist) {
+                // Moves toward food get high base weight
+                weight = 100.0;
+            } else {
+                // Moves away from food get low weight but aren't zero
+                weight = 5.0;
+            }
+
+            // Add recency bonus: prefer unvisited or long-ago-visited LEDs
+            int age = moveCount - lastVisitedAt[move];
+            if (lastVisitedAt[move] == 0) {
+                age = moveCount + 50;
+            }
+            weight += age * 0.5;
+
+            weights[i] = weight;
+            totalWeight += weight;
+        }
+
+        // Weighted random pick
         double roll = random.nextDouble() * totalWeight;
         int nextLED = validMoves.get(validMoves.size() - 1);
         double cumulative = 0;
@@ -178,29 +234,50 @@ public class SnakeEffect implements Effect {
         }
 
         lastVisitedAt[nextLED] = moveCount;
-
-        // Move head to new position
         snakeBody.add(nextLED);
 
-        // Check if snake ate food
         if (nextLED == foodLED) {
+            // Ate food — grow (but cap length)
+            if (snakeBody.size() > maxLength) {
+                snakeBody.removeFirst();
+            }
             spawnFood();
-            System.out.println("Snake ate food! Length: " + snakeBody.size() + ", new food: " + foodLED);
         } else {
             snakeBody.removeFirst();
         }
     }
-    
-    @Override
-    public void dispose() {
-        // Nothing to clean up
+
+    /**
+     * BFS from source, returns distance array. Unreachable LEDs get Integer.MAX_VALUE.
+     */
+    private int[] bfsDistances(int source) {
+        int[] dist = new int[coords.getCount()];
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[source] = 0;
+        Queue<Integer> queue = new LinkedList<>();
+        queue.add(source);
+
+        while (!queue.isEmpty()) {
+            int curr = queue.poll();
+            for (int neighbor : graph.getNeighbors(curr)) {
+                if (dist[neighbor] == Integer.MAX_VALUE) {
+                    dist[neighbor] = dist[curr] + 1;
+                    queue.add(neighbor);
+                }
+            }
+        }
+
+        return dist;
     }
-    
+
+    @Override
+    public void dispose() {}
+
     @Override
     public String getName() {
         return "Snake";
     }
-    
+
     @Override
     public int getFPS() {
         return fps;

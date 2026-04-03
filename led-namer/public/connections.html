@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Connection Editor - FUX</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+        header { text-align: center; margin-bottom: 16px; }
+        h1 { font-size: 28px; color: #60a5fa; margin-bottom: 4px; }
+        .subtitle { font-size: 15px; opacity: 0.8; }
+        .main-content { display: flex; flex: 1; gap: 24px; min-height: 0; }
+        .canvas-section { flex: 3; display: flex; flex-direction: column; }
+        .canvas-container {
+            flex: 1; border: 2px solid #334155; border-radius: 12px;
+            overflow: hidden; background: #1e293b; min-height: 400px; position: relative;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        .controls { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .mode-buttons { display: flex; gap: 8px; }
+        .btn {
+            padding: 10px 18px; background: #334155; color: #e2e8f0; border: none;
+            border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;
+        }
+        .btn:hover { background: #475569; }
+        .btn.active { background: #3b82f6; color: white; }
+        .btn.danger { background: #ef4444; }
+        .btn.danger:hover { background: #dc2626; }
+        .btn.success { background: #10b981; }
+        .btn.success:hover { background: #059669; }
+        .btn.warn { background: #f59e0b; color: #1e293b; }
+        .btn.warn:hover { background: #d97706; }
+        .status-bar {
+            padding: 8px 16px; background: #334155; border-radius: 8px;
+            font-size: 14px; flex: 1; min-width: 200px;
+        }
+        .status-bar .highlight { color: #60a5fa; font-weight: 600; }
+        .sidebar {
+            flex: 1; max-width: 380px; display: flex; flex-direction: column;
+            background: #1e293b; border-radius: 12px; padding: 20px; overflow: hidden;
+        }
+        .sidebar h2 { font-size: 20px; margin-bottom: 12px; color: #60a5fa; }
+        .stats { display: flex; gap: 12px; margin-bottom: 16px; }
+        .stat-box {
+            flex: 1; background: #334155; border-radius: 8px; padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #60a5fa; }
+        .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .connection-list { flex: 1; overflow-y: auto; padding-right: 8px; }
+        .conn-item {
+            background: #334155; border-radius: 6px; padding: 8px 12px;
+            margin-bottom: 6px; display: flex; justify-content: space-between;
+            align-items: center; font-size: 14px; cursor: pointer;
+            transition: background 0.15s; border-left: 3px solid #3b82f6;
+        }
+        .conn-item:hover { background: #475569; }
+        .conn-item .delete-btn {
+            background: none; border: none; color: #ef4444; cursor: pointer;
+            font-size: 16px; padding: 2px 6px; border-radius: 4px;
+        }
+        .conn-item .delete-btn:hover { background: rgba(239,68,68,0.2); }
+        .unconnected-section { margin-top: 16px; }
+        .unconnected-section h3 { font-size: 14px; color: #f59e0b; margin-bottom: 8px; }
+        .unconnected-list {
+            font-size: 13px; color: #94a3b8; background: rgba(0,0,0,0.2);
+            padding: 8px; border-radius: 6px; max-height: 80px; overflow-y: auto;
+            word-break: break-all;
+        }
+        .loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #60a5fa; font-size: 18px;
+        }
+        footer { margin-top: 16px; text-align: center; font-size: 13px; color: #64748b; }
+        .nav-link { color: #60a5fa; text-decoration: none; }
+        .nav-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LED Connection Editor</h1>
+        <p class="subtitle">Click two LEDs to connect them. Right-click a connection line to delete it. <a class="nav-link" href="/visual.html">Back to Group Editor</a></p>
+    </header>
+
+    <div class="main-content">
+        <section class="canvas-section">
+            <div class="canvas-container">
+                <div class="loading" id="loading">Loading LED coordinates...</div>
+                <canvas id="led-canvas"></canvas>
+            </div>
+            <div class="controls">
+                <div class="mode-buttons">
+                    <button id="mode-connect" class="btn active">Connect</button>
+                    <button id="mode-delete" class="btn">Delete</button>
+                    <button id="mode-chain" class="btn">Chain</button>
+                </div>
+                <button id="undo-btn" class="btn">Undo</button>
+                <button id="auto-connect-btn" class="btn warn">Auto-Connect Nearby</button>
+                <button id="clear-all-btn" class="btn danger">Clear All</button>
+                <div class="status-bar" id="status-bar">
+                    Mode: <span class="highlight">Connect</span> — click first LED
+                </div>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <h2>Connections</h2>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="conn-count">0</div>
+                    <div class="stat-label">Connections</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="connected-count">0</div>
+                    <div class="stat-label">Connected LEDs</div>
+                </div>
+            </div>
+            <div class="connection-list" id="connection-list">
+                <div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No connections yet.</div>
+            </div>
+            <div class="unconnected-section">
+                <h3>Unconnected LEDs</h3>
+                <div class="unconnected-list" id="unconnected-list">—</div>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <p>Connections saved to led-connections.json — used by effects like snake for LED traversal</p>
+    </footer>
+
+    <script>
+    (function() {
+        // State
+        let leds = [];
+        let connections = []; // [[a,b], ...]
+        let undoStack = [];
+        let scale = 1, offsetX = 0, offsetY = 0;
+        let mode = 'connect'; // 'connect', 'delete', 'chain'
+        let pendingLED = null; // first LED in a connect/chain action
+        let hoveredLED = null;
+        let lastChainLED = null; // for chain mode continuity
+
+        const canvas = document.getElementById('led-canvas');
+        const ctx = canvas.getContext('2d');
+        const LED_RADIUS = 6;
+        const CONNECT_LINE_COLOR = '#22d3ee';
+        const PENDING_COLOR = '#fbbf24';
+        const HOVER_COLOR = '#a78bfa';
+        const LED_COLOR = '#4b5563';
+        const CONNECTED_LED_COLOR = '#60a5fa';
+        const BG_COLOR = '#1e293b';
+
+        // --- Canvas setup ---
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            fitToCanvas();
+            draw();
+        }
+
+        function fitToCanvas() {
+            if (leds.length === 0) return;
+            const padding = 30;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            leds.forEach(l => {
+                minX = Math.min(minX, l.x); maxX = Math.max(maxX, l.x);
+                minY = Math.min(minY, l.y); maxY = Math.max(maxY, l.y);
+            });
+            const w = maxX - minX, h = maxY - minY;
+            const sx = (canvas.width - padding * 2) / w;
+            const sy = (canvas.height - padding * 2) / h;
+            scale = Math.min(sx, sy);
+            offsetX = padding - minX * scale;
+            offsetY = padding - minY * scale;
+        }
+
+        function ledToCanvas(led) {
+            return { x: led.x * scale + offsetX, y: led.y * scale + offsetY };
+        }
+
+        function findLEDAt(cx, cy) {
+            const threshold = 15;
+            let closest = null, minDist = Infinity;
+            leds.forEach(l => {
+                const p = ledToCanvas(l);
+                const d = Math.hypot(p.x - cx, p.y - cy);
+                if (d < minDist && d < threshold) { minDist = d; closest = l; }
+            });
+            return closest;
+        }
+
+        function findConnectionAt(cx, cy) {
+            const threshold = 8;
+            let best = null, bestDist = Infinity;
+            connections.forEach(([a, b]) => {
+                const la = leds[a], lb = leds[b];
+                if (!la || !lb) return;
+                const pa = ledToCanvas(la), pb = ledToCanvas(lb);
+                const d = distToSegment(cx, cy, pa.x, pa.y, pb.x, pb.y);
+                if (d < bestDist && d < threshold) { bestDist = d; best = [a, b]; }
+            });
+            return best;
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len2 = dx * dx + dy * dy;
+            if (len2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+        }
+
+        // --- Drawing ---
+        function getConnectedSet() {
+            const s = new Set();
+            connections.forEach(([a, b]) => { s.add(a); s.add(b); });
+            return s;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = BG_COLOR;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const connectedSet = getConnectedSet();
+
+            // Draw connections
+            ctx.strokeStyle = CONNECT_LINE_COLOR;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.6;
+            connections.forEach(([a, b]) => {
+                const pa = ledToCanvas(leds[a]), pb = ledToCanvas(leds[b]);
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.stroke();
+            });
+            ctx.globalAlpha = 1;
+
+            // Draw pending connection line
+            if (pendingLED !== null && hoveredLED !== null && hoveredLED.index !== pendingLED) {
+                const pa = ledToCanvas(leds[pendingLED]);
+                const pb = ledToCanvas(hoveredLED);
+                ctx.strokeStyle = PENDING_COLOR;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw LEDs
+            leds.forEach(led => {
+                const p = ledToCanvas(led);
+                const isPending = led.index === pendingLED;
+                const isHovered = hoveredLED && led.index === hoveredLED.index;
+                const isConnected = connectedSet.has(led.index);
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, isPending ? LED_RADIUS + 3 : LED_RADIUS, 0, Math.PI * 2);
+
+                if (isPending) {
+                    ctx.fillStyle = PENDING_COLOR;
+                } else if (isHovered) {
+                    ctx.fillStyle = HOVER_COLOR;
+                } else if (isConnected) {
+                    ctx.fillStyle = CONNECTED_LED_COLOR;
+                } else {
+                    ctx.fillStyle = LED_COLOR;
+                }
+                ctx.fill();
+                ctx.strokeStyle = isPending ? '#fff' : (isConnected ? '#93c5fd' : '#334155');
+                ctx.lineWidth = isPending ? 2 : 1;
+                ctx.stroke();
+
+                // Draw index label for pending/hovered
+                if (isPending || isHovered) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '11px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(led.index, p.x, p.y - LED_RADIUS - 6);
+                }
+            });
+        }
+
+        // --- Connection management ---
+        function addConnection(a, b) {
+            const edge = [Math.min(a, b), Math.max(a, b)];
+            if (connections.some(c => c[0] === edge[0] && c[1] === edge[1])) return false;
+            undoStack.push({ action: 'add', edge });
+            connections.push(edge);
+            return true;
+        }
+
+        function removeConnection(a, b) {
+            const edge = [Math.min(a, b), Math.max(a, b)];
+            const idx = connections.findIndex(c => c[0] === edge[0] && c[1] === edge[1]);
+            if (idx === -1) return false;
+            undoStack.push({ action: 'remove', edge });
+            connections.splice(idx, 1);
+            return true;
+        }
+
+        function undo() {
+            const last = undoStack.pop();
+            if (!last) return;
+            if (last.action === 'add') {
+                const idx = connections.findIndex(c => c[0] === last.edge[0] && c[1] === last.edge[1]);
+                if (idx !== -1) connections.splice(idx, 1);
+            } else if (last.action === 'remove') {
+                connections.push(last.edge);
+            }
+            saveConnections();
+            draw();
+            updateSidebar();
+        }
+
+        async function saveConnections() {
+            try {
+                // Full replace: delete all, then write all
+                await fetch('/api/connections/all', { method: 'DELETE' });
+                for (const edge of connections) {
+                    await fetch('/api/connections', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ a: edge[0], b: edge[1] })
+                    });
+                }
+            } catch (err) {
+                console.error('Error saving connections:', err);
+            }
+        }
+
+        async function loadConnections() {
+            try {
+                const res = await fetch('/api/connections');
+                if (res.ok) connections = await res.json();
+            } catch (err) {
+                console.error('Error loading connections:', err);
+            }
+        }
+
+        // --- Auto-connect: connect each LED to its closest neighbor within threshold ---
+        function autoConnect() {
+            const maxDist = parseFloat(prompt('Max distance between LEDs to auto-connect (in coordinate units, try 25):', '25'));
+            if (isNaN(maxDist) || maxDist <= 0) return;
+            let added = 0;
+            for (let i = 0; i < leds.length; i++) {
+                for (let j = i + 1; j < leds.length; j++) {
+                    const d = Math.hypot(leds[i].x - leds[j].x, leds[i].y - leds[j].y);
+                    if (d <= maxDist) {
+                        if (addConnection(i, j)) added++;
+                    }
+                }
+            }
+            if (added > 0) {
+                saveConnections();
+                draw();
+                updateSidebar();
+            }
+            setStatus(`Auto-connected ${added} LED pairs within distance ${maxDist}`);
+        }
+
+        async function clearAll() {
+            if (!confirm(`Delete all ${connections.length} connections?`)) return;
+            undoStack = [];
+            connections = [];
+            await fetch('/api/connections/all', { method: 'DELETE' });
+            draw();
+            updateSidebar();
+            setStatus('All connections cleared');
+        }
+
+        // --- UI updates ---
+        function setStatus(msg) {
+            document.getElementById('status-bar').innerHTML = msg;
+        }
+
+        function updateSidebar() {
+            document.getElementById('conn-count').textContent = connections.length;
+            const connSet = getConnectedSet();
+            document.getElementById('connected-count').textContent = connSet.size;
+
+            const list = document.getElementById('connection-list');
+            if (connections.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No connections yet.</div>';
+            } else {
+                // Show sorted, most recent first
+                const sorted = [...connections].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                list.innerHTML = sorted.map(([a, b]) => `
+                    <div class="conn-item" data-a="${a}" data-b="${b}">
+                        <span>${a} — ${b}</span>
+                        <button class="delete-btn" title="Delete">&times;</button>
+                    </div>
+                `).join('');
+
+                list.querySelectorAll('.conn-item').forEach(el => {
+                    const a = parseInt(el.dataset.a), b = parseInt(el.dataset.b);
+                    el.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeConnection(a, b);
+                        saveConnections();
+                        draw();
+                        updateSidebar();
+                    });
+                    // Hover highlight
+                    el.addEventListener('mouseenter', () => {
+                        pendingLED = a;
+                        hoveredLED = leds[b];
+                        draw();
+                    });
+                    el.addEventListener('mouseleave', () => {
+                        pendingLED = null;
+                        hoveredLED = null;
+                        draw();
+                    });
+                });
+            }
+
+            // Unconnected LEDs
+            const unconnected = [];
+            for (let i = 0; i < leds.length; i++) {
+                if (!connSet.has(i)) unconnected.push(i);
+            }
+            const unconnEl = document.getElementById('unconnected-list');
+            if (unconnected.length === 0) {
+                unconnEl.textContent = 'All LEDs connected!';
+                unconnEl.style.color = '#10b981';
+            } else {
+                unconnEl.textContent = unconnected.join(', ');
+                unconnEl.style.color = '#94a3b8';
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            pendingLED = null;
+            lastChainLED = null;
+            document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('mode-' + newMode).classList.add('active');
+            const labels = {
+                connect: 'Mode: <span class="highlight">Connect</span> — click first LED',
+                delete: 'Mode: <span class="highlight">Delete</span> — click a connection line to remove it',
+                chain: 'Mode: <span class="highlight">Chain</span> — click LEDs in sequence to connect them'
+            };
+            setStatus(labels[newMode]);
+            draw();
+        }
+
+        // --- Mouse handlers ---
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            hoveredLED = findLEDAt(cx, cy);
+            draw();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            hoveredLED = null;
+            draw();
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            const led = findLEDAt(cx, cy);
+
+            if (mode === 'connect') {
+                if (!led) return;
+                if (pendingLED === null) {
+                    pendingLED = led.index;
+                    setStatus(`Mode: <span class="highlight">Connect</span> — LED <span class="highlight">${led.index}</span> selected, click second LED`);
+                } else {
+                    if (led.index !== pendingLED) {
+                        if (addConnection(pendingLED, led.index)) {
+                            saveConnections();
+                            setStatus(`Connected ${pendingLED} — ${led.index}. Click next first LED.`);
+                        } else {
+                            setStatus(`${pendingLED} — ${led.index} already connected. Click first LED.`);
+                        }
+                    }
+                    pendingLED = null;
+                    draw();
+                    updateSidebar();
+                }
+            } else if (mode === 'delete') {
+                const conn = findConnectionAt(cx, cy);
+                if (conn) {
+                    removeConnection(conn[0], conn[1]);
+                    saveConnections();
+                    setStatus(`Deleted connection ${conn[0]} — ${conn[1]}`);
+                    draw();
+                    updateSidebar();
+                }
+            } else if (mode === 'chain') {
+                if (!led) return;
+                if (lastChainLED === null) {
+                    lastChainLED = led.index;
+                    pendingLED = led.index;
+                    setStatus(`Mode: <span class="highlight">Chain</span> — LED <span class="highlight">${led.index}</span>, click next LED in chain`);
+                } else {
+                    if (led.index !== lastChainLED) {
+                        if (addConnection(lastChainLED, led.index)) {
+                            saveConnections();
+                            setStatus(`Chained ${lastChainLED} — ${led.index}. Click next LED or switch mode.`);
+                        } else {
+                            setStatus(`${lastChainLED} — ${led.index} already exists. Click next LED.`);
+                        }
+                        lastChainLED = led.index;
+                        pendingLED = led.index;
+                        draw();
+                        updateSidebar();
+                    }
+                }
+            }
+            draw();
+        });
+
+        // Right-click to delete connection
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            const conn = findConnectionAt(cx, cy);
+            if (conn) {
+                removeConnection(conn[0], conn[1]);
+                saveConnections();
+                setStatus(`Deleted connection ${conn[0]} — ${conn[1]}`);
+                draw();
+                updateSidebar();
+            }
+        });
+
+        // Keyboard: Escape to cancel pending, Ctrl+Z to undo
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                pendingLED = null;
+                lastChainLED = null;
+                setMode(mode);
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        // Mode buttons
+        document.getElementById('mode-connect').addEventListener('click', () => setMode('connect'));
+        document.getElementById('mode-delete').addEventListener('click', () => setMode('delete'));
+        document.getElementById('mode-chain').addEventListener('click', () => setMode('chain'));
+        document.getElementById('undo-btn').addEventListener('click', undo);
+        document.getElementById('auto-connect-btn').addEventListener('click', autoConnect);
+        document.getElementById('clear-all-btn').addEventListener('click', clearAll);
+
+        // --- Init ---
+        async function init() {
+            try {
+                const res = await fetch('/api/coords');
+                const coords = await res.json();
+                leds = coords.slice(0, 268).map(c => ({ x: c.x, y: c.y, index: c.index }));
+                document.getElementById('loading').style.display = 'none';
+            } catch (err) {
+                document.getElementById('loading').textContent = 'Error loading coordinates!';
+                return;
+            }
+            await loadConnections();
+            resizeCanvas();
+            updateSidebar();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        init();
+    })();
+    </script>
+</body>
+</html>
