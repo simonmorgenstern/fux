@@ -166,21 +166,21 @@ public class SnakeEffect implements Effect {
 
         if (possibleMoves.isEmpty()) return;
 
-        // Filter out body collisions (tail is OK since it will move)
+        // Filter out all body collisions — no exceptions
         List<Integer> validMoves = new ArrayList<>();
+        Set<Integer> bodySet = new HashSet<>(snakeBody);
         for (int move : possibleMoves) {
-            if (!snakeBody.contains(move) || move == snakeBody.getFirst()) {
+            if (!bodySet.contains(move)) {
                 validMoves.add(move);
             }
         }
 
-        // If stuck, shrink the tail to free up space
+        // If stuck, shrink the tail to free up space and retry
         if (validMoves.isEmpty()) {
             if (snakeBody.size() > 2) {
                 snakeBody.removeFirst();
-                return;
             }
-            validMoves = possibleMoves;
+            return;
         }
 
         // Use BFS to find which moves bring us closer to food
@@ -237,12 +237,14 @@ public class SnakeEffect implements Effect {
         snakeBody.add(nextLED);
 
         if (nextLED == foodLED) {
-            // Ate food — grow (but cap length)
-            if (snakeBody.size() > maxLength) {
-                snakeBody.removeFirst();
-            }
+            // Ate food — grow by keeping the tail this turn
             spawnFood();
         } else {
+            snakeBody.removeFirst();
+        }
+
+        // Cap max length
+        while (snakeBody.size() > maxLength) {
             snakeBody.removeFirst();
         }
     }
