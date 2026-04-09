@@ -1,16 +1,19 @@
 {
   "name": "Lightning",
-  "description": "Electric lightning bolts arc through the LED connection graph",
-  "version": "1.0",
+  "description": "Thunderstorm with constant rain and lightning bolts through the LED graph",
+  "version": "1.1",
   "type": "procedural",
   "algorithm": "lightning",
   "fps": 30,
-  "duration": 25,
+  "duration": 30,
   "parameters": {
     "min_interval": 1.0,
     "max_interval": 3.5,
     "bolt_length": 30,
     "branch_prob": 0.3,
+    "rain_count": 15,
+    "rain_speed_min": 3.0,
+    "rain_speed_max": 7.0,
     "brightness": 1.0
   }
 }

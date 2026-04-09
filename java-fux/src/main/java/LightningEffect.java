@@ -19,10 +19,13 @@ public class LightningEffect implements Effect {
     private List<Bolt> activeBolts;
     private double nextStrikeTime;
 
-    // Ambient flicker state
-    private int[] flickerLEDs;
-    private double[] flickerTimers;
-    private static final int FLICKER_COUNT = 5;
+    // Rain state
+    private List<Raindrop> raindrops;
+    private int rainCount;
+    private double rainSpeedMin;
+    private double rainSpeedMax;
+    private double minY;
+    private double maxY;
 
     // Background color
     private static final Color AMBIENT = new Color(5, 2, 10);
@@ -38,7 +41,12 @@ public class LightningEffect implements Effect {
         this.boltLength = params.has("bolt_length") ? params.get("bolt_length").getAsInt() : 30;
         this.branchProb = params.has("branch_prob") ? params.get("branch_prob").getAsDouble() : 0.3;
 
-        // Build neighbor graph
+        // Rain parameters
+        this.rainCount = params.has("rain_count") ? params.get("rain_count").getAsInt() : 15;
+        this.rainSpeedMin = params.has("rain_speed_min") ? params.get("rain_speed_min").getAsDouble() : 3.0;
+        this.rainSpeedMax = params.has("rain_speed_max") ? params.get("rain_speed_max").getAsDouble() : 7.0;
+
+        // Build neighbor graph for lightning bolts
         double minDist = params.has("min_neighbor_distance") ?
             params.get("min_neighbor_distance").getAsDouble() : 10.0;
         double maxDist = params.has("max_neighbor_distance") ?
@@ -49,21 +57,32 @@ public class LightningEffect implements Effect {
         this.graph = new LEDNeighborGraph(coords);
         this.graph.build(minDist, maxDist, maxNeighbors);
 
+        // Find Y range for rain
+        this.minY = Double.MAX_VALUE;
+        this.maxY = Double.MIN_VALUE;
+        for (int i = 0; i < coords.getCount(); i++) {
+            PixelCoordinate coord = coords.get(i);
+            minY = Math.min(minY, coord.getY());
+            maxY = Math.max(maxY, coord.getY());
+        }
+
+        // Initialize bolts
         this.activeBolts = new ArrayList<>();
         this.nextStrikeTime = randomInterval();
 
-        // Initialize ambient flicker LEDs
-        this.flickerLEDs = new int[FLICKER_COUNT];
-        this.flickerTimers = new double[FLICKER_COUNT];
-        for (int i = 0; i < FLICKER_COUNT; i++) {
-            flickerLEDs[i] = random.nextInt(coords.getCount());
-            flickerTimers[i] = random.nextDouble() * 2.0;
+        // Initialize raindrops spread across the Y range
+        this.raindrops = new ArrayList<>();
+        for (int i = 0; i < rainCount; i++) {
+            Raindrop drop = spawnRaindrop();
+            drop.y = minY + random.nextDouble() * (maxY - minY); // spread out initially
+            raindrops.add(drop);
         }
 
         System.out.println("LightningEffect initialized:");
         System.out.println("  Bolt length: " + boltLength);
         System.out.println("  Branch probability: " + branchProb);
         System.out.println("  Strike interval: " + minInterval + "-" + maxInterval + "s");
+        System.out.println("  Rain drops: " + rainCount);
     }
 
     @Override
@@ -75,8 +94,8 @@ public class LightningEffect implements Effect {
             pixels.put(i, AMBIENT);
         }
 
-        // Between-strike flickers
-        renderAmbientFlickers(pixels, timeSeconds);
+        // Render rain
+        renderRain(pixels);
 
         // Check if it's time for a new strike
         if (timeSeconds >= nextStrikeTime) {
@@ -99,40 +118,77 @@ public class LightningEffect implements Effect {
         return pixels;
     }
 
-    private void renderAmbientFlickers(Map<Integer, Color> pixels, double timeSeconds) {
-        for (int i = 0; i < FLICKER_COUNT; i++) {
-            if (timeSeconds >= flickerTimers[i]) {
-                // Brief dim flicker
-                double flickerPhase = (timeSeconds - flickerTimers[i]) * 10.0;
-                if (flickerPhase < 1.0) {
-                    int b = (int) (30 * (1.0 - flickerPhase) * brightness);
-                    pixels.put(flickerLEDs[i], new Color(
-                        clamp((int)(b * 0.4)),
-                        clamp((int)(b * 0.3)),
-                        clamp(b)
-                    ));
-                } else {
-                    // Reset flicker
-                    flickerLEDs[i] = random.nextInt(coords.getCount());
-                    flickerTimers[i] = timeSeconds + 0.3 + random.nextDouble() * 1.5;
+    // --- Rain ---
+
+    private Raindrop spawnRaindrop() {
+        PixelCoordinate randomCoord = coords.get(random.nextInt(coords.getCount()));
+        double x = randomCoord.getX();
+        double speed = rainSpeedMin + random.nextDouble() * (rainSpeedMax - rainSpeedMin);
+        return new Raindrop(x, minY, speed);
+    }
+
+    private void renderRain(Map<Integer, Color> pixels) {
+        for (int i = 0; i < raindrops.size(); i++) {
+            Raindrop drop = raindrops.get(i);
+
+            // Move raindrop down
+            drop.y += drop.speed;
+
+            // Respawn at top if past bottom
+            if (drop.y > maxY) {
+                raindrops.set(i, spawnRaindrop());
+                continue;
+            }
+
+            // Light up LEDs near this raindrop
+            for (int j = 0; j < coords.getCount(); j++) {
+                PixelCoordinate led = coords.get(j);
+
+                double dx = led.getX() - drop.x;
+                if (Math.abs(dx) > 15) continue;
+
+                double dy = led.getY() - drop.y;
+                // Trail extends upward from head
+                if (dy < -35 || dy > 3) continue;
+
+                double distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 15) {
+                    double trailPos = Math.abs(dy) / 35.0;
+                    double intensity = (1.0 - trailPos) * brightness;
+                    intensity *= Math.max(0, 1.0 - (Math.abs(dx) / 15.0));
+
+                    if (intensity > 0.05) {
+                        // Blue-ish rain color
+                        int r = clamp((int) (10 * intensity));
+                        int g = clamp((int) (30 * intensity));
+                        int b = clamp((int) (80 * intensity));
+
+                        Color existing = pixels.get(j);
+                        if (existing != null) {
+                            r = Math.min(255, existing.getRed() + r);
+                            g = Math.min(255, existing.getGreen() + g);
+                            b = Math.min(255, existing.getBlue() + b);
+                        }
+                        pixels.put(j, new Color(r, g, b));
+                    }
                 }
             }
         }
     }
 
+    // --- Lightning ---
+
     private Bolt generateBolt(double strikeTime) {
         int startLED = random.nextInt(coords.getCount());
-        int targetLength = boltLength + random.nextInt(11) - 5; // boltLength +/- 5
+        int targetLength = boltLength + random.nextInt(11) - 5;
         targetLength = Math.max(15, Math.min(40, targetLength));
 
         Set<Integer> visited = new HashSet<>();
         List<Integer> mainPath = new ArrayList<>();
         List<List<Integer>> branches = new ArrayList<>();
 
-        // Random walk for main bolt
         walkPath(startLED, targetLength, visited, mainPath);
 
-        // Generate branches at junction nodes
         for (int i = 0; i < mainPath.size(); i++) {
             int led = mainPath.get(i);
             List<Integer> neighbors = graph.getNeighbors(led);
@@ -147,7 +203,6 @@ public class LightningEffect implements Effect {
             }
         }
 
-        // Determine reflicker frames (age 4 or 6)
         Set<Integer> reflickerFrames = new HashSet<>();
         if (random.nextDouble() < 0.5) reflickerFrames.add(4);
         if (random.nextDouble() < 0.4) reflickerFrames.add(6);
@@ -180,37 +235,30 @@ public class LightningEffect implements Effect {
     private void renderBolt(Bolt bolt, int boltAge, Map<Integer, Color> pixels) {
         boolean isReflicker = bolt.reflickerFrames.contains(boltAge);
 
-        // Determine color and brightness based on bolt age
         Color boltColor;
         double intensityMult;
 
         if (boltAge <= 1 || isReflicker) {
-            // Bright white flash
             boltColor = new Color(255, 255, 255);
             intensityMult = 1.0;
         } else if (boltAge <= 4) {
-            // Electric blue
             boltColor = new Color(100, 100, 255);
             intensityMult = 0.7;
         } else if (boltAge <= 8) {
-            // Purple fade out
             double fade = 1.0 - (boltAge - 5) / 4.0;
             boltColor = new Color(80, 40, 200);
             intensityMult = 0.5 * fade;
         } else {
-            // Afterglow on some LEDs
             boltColor = new Color(40, 20, 100);
             double fade = 1.0 - (boltAge - 9) / 7.0;
             intensityMult = 0.2 * Math.max(0, fade);
         }
 
-        // Render main path
         for (int led : bolt.mainPath) {
-            if (boltAge > 8 && random.nextDouble() > 0.4) continue; // Sparse afterglow
+            if (boltAge > 8 && random.nextDouble() > 0.4) continue;
             applyBoltColor(pixels, led, boltColor, intensityMult * brightness);
         }
 
-        // Render branches (dimmer)
         double branchDimming = 0.5;
         for (List<Integer> branch : bolt.branches) {
             for (int led : branch) {
@@ -227,7 +275,6 @@ public class LightningEffect implements Effect {
 
         Color existing = pixels.get(led);
         if (existing != null) {
-            // Additive blend, taking the brighter value
             r = Math.max(r, existing.getRed());
             g = Math.max(g, existing.getGreen());
             b = Math.max(b, existing.getBlue());
@@ -246,6 +293,7 @@ public class LightningEffect implements Effect {
     @Override
     public void dispose() {
         activeBolts.clear();
+        raindrops.clear();
     }
 
     @Override
@@ -272,6 +320,18 @@ public class LightningEffect implements Effect {
             this.branches = branches;
             this.strikeTime = strikeTime;
             this.reflickerFrames = reflickerFrames;
+        }
+    }
+
+    private static class Raindrop {
+        double x;
+        double y;
+        double speed;
+
+        Raindrop(double x, double y, double speed) {
+            this.x = x;
+            this.y = y;
+            this.speed = speed;
         }
     }
 }
