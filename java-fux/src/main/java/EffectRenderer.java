@@ -194,7 +194,11 @@ public class EffectRenderer implements Runnable {
             case "ripple_burst": return new RippleBurstEffect();
             case "color_chase": return new ColorChaseEffect();
             case "drop_pulse": return new DropPulseEffect();
+            case "flood_fill": return new FloodFillEffect();
+            case "pulse_network": return new PulseNetworkEffect();
             case "forest_fire": return new ForestFireEffect();
+            case "lightning": return new LightningEffect();
+            case "firefly_sync": return new FireflySyncEffect();
             default: return null;
         }
     }

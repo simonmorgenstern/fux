@@ -46,7 +46,12 @@ public class EffectsHttpHandler implements HttpHandler {
         "body_flash",
         "ripple_burst",
         "color_chase",
-        "drop_pulse"
+        "drop_pulse",
+        "flood_fill",
+        "pulse_network",
+        "forest_fire",
+        "lightning",
+        "firefly_sync"
     };
     
     @Override
