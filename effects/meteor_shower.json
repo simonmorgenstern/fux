@@ -8,8 +8,8 @@
   "duration": 10,
   "parameters": {
     "meteor_count": 3,
-    "speed_min": 15.0,
-    "speed_max": 25.0,
+    "speed_min": 0.01,
+    "speed_max": 0.03,
     "trail_length": 25,
     "colors": ["gold", "white", "cyan"]
   }

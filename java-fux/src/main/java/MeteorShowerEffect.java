@@ -101,9 +101,6 @@ public class MeteorShowerEffect implements Effect {
                 double distance = Math.sqrt(dx * dx + dy * dy);
                 
                 // Check if LED is in the trail
-                // Also check distance along the path (for trail effect)
-                double trailProgress = meteor.progress - 0.05; // Trail slightly behind
-                
                 for (int t = 0; t < trailLength; t++) {
                     double trailPos = meteor.progress - (t * 0.015); // Trail positions
                     
