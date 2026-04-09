@@ -209,10 +209,13 @@ public class EffectsHttpHandler implements HttpHandler {
         };
         for (String path : pathsToTry) {
             java.io.File f = new java.io.File(path);
-            if (f.exists() && f.canWrite()) {
+            if (f.exists()) {
+                logger.info("Found effect file at: {} (writable: {})", f.getAbsolutePath(), f.canWrite());
                 return path;
             }
         }
+        logger.warn("Could not find effect file for: {} (cwd: {})", effectName,
+            new java.io.File(".").getAbsolutePath());
         return null;
     }
 
