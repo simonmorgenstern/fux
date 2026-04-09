@@ -41,18 +41,14 @@ public class EffectEngine implements Runnable {
         add("aurora");
         add("bilateral_fill");
         add("motion_blur");
-        add("gradient");
         add("diamond_pulse");
         add("outside_spin");
         add("heartbeat");
         add("lava_lamp");
         add("contour_trace");
         add("strobe");
-        add("body_flash");
         add("ripple_burst");
-        add("color_chase");
         add("drop_pulse");
-        add("flood_fill");
         add("pulse_network");
         add("forest_fire");
         add("lightning");
@@ -272,9 +268,6 @@ public class EffectEngine implements Runnable {
                 case "motion_blur":
                     currentEffect = new MotionBlurEffect();
                     break;
-                case "gradient":
-                    currentEffect = new GradientEffect();
-                    break;
                 case "diamond_pulse":
                     currentEffect = new DiamondPulseEffect();
                     break;
@@ -293,23 +286,14 @@ public class EffectEngine implements Runnable {
                 case "strobe":
                     currentEffect = new StrobeEffect();
                     break;
-                case "body_flash":
-                    currentEffect = new BodyFlashEffect();
-                    break;
                 case "ripple_burst":
                     currentEffect = new RippleBurstEffect();
-                    break;
-                case "color_chase":
-                    currentEffect = new ColorChaseEffect();
                     break;
                 case "drop_pulse":
                     currentEffect = new DropPulseEffect();
                     break;
                 case "pulse_network":
                     currentEffect = new PulseNetworkEffect();
-                    break;
-                case "flood_fill":
-                    currentEffect = new FloodFillEffect();
                     break;
                 case "forest_fire":
                     currentEffect = new ForestFireEffect();
