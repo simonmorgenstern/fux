@@ -370,12 +370,15 @@ public class EffectEngine implements Runnable {
     }
 
     /**
-     * Clear LEDs and close the native strip.
-     * After this call, no further rendering is possible.
+     * Close the native strip. Waits for any in-progress render to finish,
+     * then prevents further renders and calls ws2811_fini (which internally
+     * clears all LEDs before freeing native resources).
+     * Also deregisters from diozero's device factory, preventing its
+     * shutdown hook from racing with ours.
      */
     public void closeStrip() {
-        clearAllLEDs();
         synchronized (renderLock) {
+            if (closed) return;
             closed = true;
             if (mainStrip != null) {
                 try {
@@ -383,6 +386,7 @@ public class EffectEngine implements Runnable {
                 } catch (Exception e) {
                     // Ignore - best effort cleanup
                 }
+                mainStrip = null;
             }
         }
     }

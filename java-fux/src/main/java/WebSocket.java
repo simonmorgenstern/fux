@@ -238,18 +238,22 @@ public class WebSocket extends WebSocketServer {
                 // Clean shutdown sequence
                 new Thread(() -> {
                     try {
+                        // Close native strip first (clears LEDs via ws2811_fini)
+                        if (effectEngine != null) {
+                            effectEngine.closeStrip();
+                        }
+
                         stopMusicMode();
 
                         if (effectEngine != null) {
                             effectEngine.stop();
-                            effectEngine.closeStrip();
                         }
 
                         if (previewHttpServer != null) {
                             previewHttpServer.stop();
                         }
 
-                        Thread.sleep(500); // Give time for response to be sent
+                        Thread.sleep(500);
 
                         System.out.println("Server shutting down...");
                         WebSocket.this.stop(1000);
@@ -328,16 +332,26 @@ public class WebSocket extends WebSocketServer {
     }
 
     /**
-     * Clean shutdown: stop engine, clear LEDs, close native strip, stop HTTP server.
+     * Clean shutdown: close native strip, stop threads, stop servers.
      * Called from JVM shutdown hook on Ctrl+C.
+     *
+     * IMPORTANT: closeStrip() must happen FIRST because diozero registers its
+     * own shutdown hook that calls ws2811_fini() concurrently. If we spend time
+     * joining threads before closing, diozero frees the native memory while our
+     * render thread is still calling ws2811_render() → SIGSEGV.
+     * closeStrip() acquires renderLock (waiting for any in-progress render),
+     * sets closed=true, then calls close() which deregisters from diozero.
      */
     public void shutdown() {
         try {
+            // FIRST: close native strip before diozero's concurrent hook can free it
+            if (effectEngine != null) {
+                effectEngine.closeStrip();
+            }
+            // Now safely stop threads (render thread will see closed=true and skip renders)
             stopMusicMode();
             if (effectEngine != null) {
                 effectEngine.stop();
-                // Clear LEDs and close native strip to prevent diozero shutdown hook race
-                effectEngine.closeStrip();
             }
             if (previewHttpServer != null) {
                 previewHttpServer.stop();
