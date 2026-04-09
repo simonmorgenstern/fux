@@ -1,0 +1,16 @@
+{
+  "name": "Forest Fire",
+  "description": "Forest fire cellular automaton spreading through LED connections",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "forest_fire",
+  "fps": 15,
+  "duration": 30,
+  "parameters": {
+    "grow_prob": 0.03,
+    "spread_prob": 0.5,
+    "lightning_prob": 0.002,
+    "burn_frames": 8,
+    "brightness": 1.0
+  }
+}

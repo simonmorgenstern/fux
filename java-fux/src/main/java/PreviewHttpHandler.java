@@ -262,6 +262,7 @@ public class PreviewHttpHandler implements HttpHandler {
             case "ripple_burst": return new RippleBurstEffect();
             case "color_chase": return new ColorChaseEffect();
             case "drop_pulse": return new DropPulseEffect();
+            case "forest_fire": return new ForestFireEffect();
             default: return null;
         }
     }

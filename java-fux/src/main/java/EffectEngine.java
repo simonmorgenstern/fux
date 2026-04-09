@@ -52,6 +52,11 @@ public class EffectEngine implements Runnable {
         add("ripple_burst");
         add("color_chase");
         add("drop_pulse");
+        add("flood_fill");
+        add("pulse_network");
+        add("forest_fire");
+        add("lightning");
+        add("firefly_sync");
     }};
     
     // Callback for state updates
@@ -299,6 +304,21 @@ public class EffectEngine implements Runnable {
                     break;
                 case "drop_pulse":
                     currentEffect = new DropPulseEffect();
+                    break;
+                case "pulse_network":
+                    currentEffect = new PulseNetworkEffect();
+                    break;
+                case "flood_fill":
+                    currentEffect = new FloodFillEffect();
+                    break;
+                case "forest_fire":
+                    currentEffect = new ForestFireEffect();
+                    break;
+                case "firefly_sync":
+                    currentEffect = new FireflySyncEffect();
+                    break;
+                case "lightning":
+                    currentEffect = new LightningEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

@@ -1,0 +1,16 @@
+{
+  "name": "Lightning",
+  "description": "Electric lightning bolts arc through the LED connection graph",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "lightning",
+  "fps": 30,
+  "duration": 25,
+  "parameters": {
+    "min_interval": 1.0,
+    "max_interval": 3.5,
+    "bolt_length": 30,
+    "branch_prob": 0.3,
+    "brightness": 1.0
+  }
+}

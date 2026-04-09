@@ -1,0 +1,16 @@
+{
+  "name": "Firefly Sync",
+  "description": "Fireflies gradually synchronize their blinking through graph connections",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "firefly_sync",
+  "fps": 30,
+  "duration": 45,
+  "parameters": {
+    "coupling_strength": 0.05,
+    "base_frequency": 1.2,
+    "frequency_spread": 0.3,
+    "flash_duration_frames": 4,
+    "brightness": 1.0
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Pulse Network",
+  "description": "Energy pulses travel through the LED connection graph like neural signals",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "pulse_network",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "pulse_interval_frames": 20,
+    "trail_length": 8,
+    "max_pulses": 5,
+    "brightness": 1.0
+  }
+}

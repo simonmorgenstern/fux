@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -52,33 +53,33 @@ public class EffectsHttpHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         // Set CORS headers
         exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, OPTIONS");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
         exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
-        
+
         // Handle OPTIONS preflight
         if ("OPTIONS".equals(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(204, -1);
             return;
         }
-        
-        // Only allow GET
-        if (!"GET".equals(exchange.getRequestMethod())) {
-            sendError(exchange, 405, "Method not allowed");
-            return;
-        }
-        
+
+        String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
-        
+
         try {
-            if (path.equals("/api/effects") || path.equals("/api/effects/")) {
-                // List all effects
-                handleListEffects(exchange);
-            } else if (path.startsWith("/api/effects/")) {
-                // Get specific effect details
+            if ("GET".equals(method)) {
+                if (path.equals("/api/effects") || path.equals("/api/effects/")) {
+                    handleListEffects(exchange);
+                } else if (path.startsWith("/api/effects/")) {
+                    String effectName = path.substring("/api/effects/".length());
+                    handleGetEffect(exchange, effectName);
+                } else {
+                    sendError(exchange, 404, "Not found");
+                }
+            } else if ("PUT".equals(method) && path.startsWith("/api/effects/")) {
                 String effectName = path.substring("/api/effects/".length());
-                handleGetEffect(exchange, effectName);
+                handleUpdateEffect(exchange, effectName);
             } else {
-                sendError(exchange, 404, "Not found");
+                sendError(exchange, 405, "Method not allowed");
             }
         } catch (Exception e) {
             logger.error("Error handling request: {}", e.getMessage(), e);
@@ -133,6 +134,79 @@ public class EffectsHttpHandler implements HttpHandler {
         sendJsonResponse(exchange, 200, effectInfo);
     }
     
+    /**
+     * Handle PUT /api/effects/{name} - Update effect parameters
+     */
+    private void handleUpdateEffect(HttpExchange exchange, String effectName) throws IOException {
+        // Validate effect name exists
+        boolean found = false;
+        for (String name : AVAILABLE_EFFECTS) {
+            if (name.equals(effectName)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            sendError(exchange, 404, "Effect not found: " + effectName);
+            return;
+        }
+
+        // Read request body
+        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        JsonObject updates = gson.fromJson(body, JsonObject.class);
+
+        if (!updates.has("parameters")) {
+            sendError(exchange, 400, "Request must contain 'parameters' object");
+            return;
+        }
+
+        // Find the writable effect JSON file
+        String filePath = findEffectFilePath(effectName);
+        if (filePath == null) {
+            sendError(exchange, 500, "Cannot find writable effect file for: " + effectName);
+            return;
+        }
+
+        // Load current effect definition
+        JsonObject effectDef = gson.fromJson(new FileReader(filePath), JsonObject.class);
+
+        // Merge updated parameters
+        JsonObject newParams = updates.getAsJsonObject("parameters");
+        effectDef.add("parameters", newParams);
+
+        // Write back to file
+        Gson prettyGson = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+        try (FileWriter writer = new FileWriter(filePath)) {
+            writer.write(prettyGson.toJson(effectDef));
+            writer.write("\n");
+        }
+
+        logger.info("Updated parameters for effect: {}", effectName);
+
+        // Return updated metadata
+        JsonObject effectInfo = loadEffectMetadata(effectName);
+        sendJsonResponse(exchange, 200, effectInfo);
+    }
+
+    /**
+     * Find the writable file path for an effect definition
+     */
+    private String findEffectFilePath(String effectName) {
+        String[] pathsToTry = {
+            "/home/pi/fux-effects/" + effectName + ".json",
+            effectName + ".json",
+            "effects/" + effectName + ".json",
+            "../effects/" + effectName + ".json"
+        };
+        for (String path : pathsToTry) {
+            java.io.File f = new java.io.File(path);
+            if (f.exists() && f.canWrite()) {
+                return path;
+            }
+        }
+        return null;
+    }
+
     /**
      * Load effect metadata from JSON file
      * Returns a summary object with useful frontend information
