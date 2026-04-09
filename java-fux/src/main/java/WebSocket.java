@@ -238,29 +238,19 @@ public class WebSocket extends WebSocketServer {
                 // Clean shutdown sequence
                 new Thread(() -> {
                     try {
-                        // Stop music mode if running
                         stopMusicMode();
-                        
-                        // Stop effect engine
+
                         if (effectEngine != null) {
                             effectEngine.stop();
+                            effectEngine.closeStrip();
                         }
-                        
-                        // Stop preview HTTP server
+
                         if (previewHttpServer != null) {
                             previewHttpServer.stop();
                         }
-                        
-                        // Clear all LEDs (if hardware available)
-                        if (fuxStrip != null) {
-                            for (int i = 0; i < 268; i++) {
-                                fuxStrip.setPixelColour(i, PixelColour.createColourRGB(0, 0, 0));
-                            }
-                            fuxStrip.render();
-                        }
-                        
+
                         Thread.sleep(500); // Give time for response to be sent
-                        
+
                         System.out.println("Server shutting down...");
                         WebSocket.this.stop(1000);
                         System.exit(0);
@@ -327,33 +317,28 @@ public class WebSocket extends WebSocketServer {
     }
 
     private void stopMusicMode() {
-        if (musicModeThread == null || !musicModeThread.isAlive()) return; // guard clause
+        if (musicModeThread == null || !musicModeThread.isAlive()) return;
         musicModeRunner.stopped = true;
         musicModeThread.interrupt();
-        
-        // Clear LEDs if hardware available
-        if (fuxStrip != null) {
-            try {
-                for (int i = 0; i < 268; i++) {
-                    fuxStrip.setPixelColourRGB(i, 0, 0, 0);
-                }
-                fuxStrip.render();
-            } catch (Exception e) {
-                // Native strip may already be torn down, ignore
-            }
+        try {
+            musicModeThread.join(2000);
+        } catch (InterruptedException e) {
+            // Ignore
         }
     }
 
     /**
-     * Clean shutdown: stop engine, clear LEDs, stop HTTP server.
+     * Clean shutdown: stop engine, clear LEDs, close native strip, stop HTTP server.
      * Called from JVM shutdown hook on Ctrl+C.
      */
     public void shutdown() {
         try {
+            stopMusicMode();
             if (effectEngine != null) {
                 effectEngine.stop();
+                // Clear LEDs and close native strip to prevent diozero shutdown hook race
+                effectEngine.closeStrip();
             }
-            stopMusicMode();
             if (previewHttpServer != null) {
                 previewHttpServer.stop();
             }

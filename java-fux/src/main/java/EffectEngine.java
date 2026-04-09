@@ -11,9 +11,11 @@ import java.util.Random;
 
 public class EffectEngine implements Runnable {
     private Effect currentEffect;
-    private boolean running;
+    private volatile boolean running;
+    private volatile boolean closed;
     private Thread renderThread;
     private WS281x mainStrip;
+    private final Object renderLock = new Object();
     private PixelCoordinates coordinates;
     
     // Queue management
@@ -335,8 +337,9 @@ public class EffectEngine implements Runnable {
     public void stop() {
         running = false;
         if (renderThread != null) {
+            renderThread.interrupt();
             try {
-                renderThread.join(2000);
+                renderThread.join(3000);
             } catch (InterruptedException e) {
                 // Ignore
             }
@@ -346,8 +349,27 @@ public class EffectEngine implements Runnable {
         clearAllLEDs();
     }
 
+    /**
+     * Clear LEDs and close the native strip.
+     * After this call, no further rendering is possible.
+     */
+    public void closeStrip() {
+        clearAllLEDs();
+        synchronized (renderLock) {
+            closed = true;
+            if (mainStrip != null) {
+                try {
+                    mainStrip.close();
+                } catch (Exception e) {
+                    // Ignore - best effort cleanup
+                }
+            }
+        }
+    }
+
     private void clearAllLEDs() {
-        if (mainStrip != null) {
+        synchronized (renderLock) {
+            if (closed || mainStrip == null) return;
             try {
                 for (int i = 0; i < 268; i++) {
                     mainStrip.setPixelColourRGB(i, 0, 0, 0);
@@ -423,8 +445,7 @@ public class EffectEngine implements Runnable {
             }
         }
         
-        System.out.println("EffectEngine thread terminated");
-        clearAllLEDs();
+        System.out.println("EffectEngine render thread exited");
     }
     
     private void renderFrame() {
@@ -445,23 +466,24 @@ public class EffectEngine implements Runnable {
         frameNumber++;
         
         // Render to hardware (only if LED strip is available)
-        if (mainStrip != null) {
+        synchronized (renderLock) {
+            if (closed || mainStrip == null) return;
+
             // Clear all LEDs first
             for (int i = 0; i < 268; i++) {
                 mainStrip.setPixelColourRGB(i, 0, 0, 0);
             }
-            
+
             // Apply pixels (only indices 0-267 for fuxStrip)
             for (Map.Entry<Integer, Color> entry : pixels.entrySet()) {
                 int index = entry.getKey();
                 Color color = entry.getValue();
-                
+
                 if (index < 268) {
                     mainStrip.setPixelColourRGB(index, color.getRed(), color.getGreen(), color.getBlue());
                 }
-                // Ignore indices >= 268 (old sideStrip range)
             }
-            
+
             // Render to hardware
             mainStrip.render();
         }
