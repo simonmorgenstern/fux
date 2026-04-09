@@ -153,7 +153,15 @@ public class EffectsHttpHandler implements HttpHandler {
         }
 
         // Read request body
-        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        byte[] tmp = new byte[4096];
+        int n;
+        try (java.io.InputStream is = exchange.getRequestBody()) {
+            while ((n = is.read(tmp)) != -1) {
+                buf.write(tmp, 0, n);
+            }
+        }
+        String body = buf.toString(StandardCharsets.UTF_8.name());
         JsonObject updates = gson.fromJson(body, JsonObject.class);
 
         if (!updates.has("parameters")) {
