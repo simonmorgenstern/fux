@@ -73,6 +73,13 @@
             font-size: 18px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
         }
         .box-item .delete-btn:hover { background: rgba(239,68,68,0.2); }
+        .box-item .vis-btn {
+            background: none; border: none; color: #a78bfa; cursor: pointer;
+            font-size: 16px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+        }
+        .box-item .vis-btn:hover { background: rgba(167,139,250,0.2); }
+        .box-item.hidden { opacity: 0.45; border-left-color: #475569 !important; }
+        .box-item.hidden .vis-btn { color: #64748b; }
         .pending-box {
             background: rgba(167,139,250,0.15);
             border: 1px dashed #a78bfa;
@@ -133,6 +140,8 @@
                 <button id="undo-btn" class="btn">Undo Pt</button>
                 <button id="show-mirrors-btn" class="btn">Show Mirrors</button>
                 <button id="show-junctions-btn" class="btn active">Show Junctions</button>
+                <button id="hide-all-btn" class="btn">Hide All Boxes</button>
+                <button id="show-all-btn" class="btn">Show All Boxes</button>
                 <button id="clear-all-btn" class="btn danger">Clear All</button>
                 <div class="status-bar" id="status-bar">
                     Mode: <span class="highlight">Build</span> — click LEDs in cycle order
@@ -178,7 +187,18 @@
         let highlightMirrorIds = [];    // for "show mirrors"
         let showMirrors = false;
         let showJunctions = true;
+        let hiddenBoxIds = new Set();   // box ids the user has toggled off
         let scale = 1, offsetX = 0, offsetY = 0;
+
+        // Persist visibility across reloads (UI-only, never written to led-boxes.json)
+        const HIDDEN_KEY = 'fux-box-editor-hidden';
+        try {
+            const stored = JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]');
+            if (Array.isArray(stored)) hiddenBoxIds = new Set(stored);
+        } catch (e) {}
+        function persistHidden() {
+            try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenBoxIds])); } catch (e) {}
+        }
 
         const canvas = document.getElementById('led-canvas');
         const ctx = canvas.getContext('2d');
@@ -241,9 +261,10 @@
             return closest;
         }
         function findBoxAt(cx, cy) {
-            // Returns the topmost box whose polygon contains the point
+            // Returns the topmost visible box whose polygon contains the point
             for (let i = boxes.length - 1; i >= 0; i--) {
                 const b = boxes[i];
+                if (hiddenBoxIds.has(b.id)) continue;
                 if (pointInPolygon(cx, cy, b.perimeter.map(idx => ledToCanvas(leds[idx])))) {
                     return b;
                 }
@@ -332,8 +353,9 @@
             }
             ctx.globalAlpha = 1;
 
-            // Saved box polygons (filled)
+            // Saved box polygons (filled) — skip hidden boxes
             boxes.forEach((b, i) => {
+                if (hiddenBoxIds.has(b.id)) return;
                 const fill = BOX_PALETTE[i % BOX_PALETTE.length];
                 let stroke = BOX_STROKE_PALETTE[i % BOX_STROKE_PALETTE.length];
                 if (b.id === highlightBoxId) stroke = HIGHLIGHT_STROKE;
@@ -510,6 +532,8 @@
                 const res = await fetch('/api/boxes/' + id, { method: 'DELETE' });
                 if (!res.ok) throw new Error('delete failed');
                 boxes = boxes.filter(b => b.id !== id);
+                hiddenBoxIds.delete(id);
+                persistHidden();
                 renderBoxList();
                 draw();
                 setStatus(`Deleted box #${id}.`);
@@ -557,19 +581,26 @@
 
         // ---- Sidebar ----
         function renderBoxList() {
-            document.getElementById('box-count').textContent = boxes.length;
+            const visibleCount = boxes.filter(b => !hiddenBoxIds.has(b.id)).length;
+            document.getElementById('box-count').textContent =
+                visibleCount === boxes.length
+                    ? boxes.length
+                    : `${visibleCount}/${boxes.length}`;
             const list = document.getElementById('box-list');
             if (boxes.length === 0) {
                 list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No boxes yet.</div>';
                 return;
             }
             const sorted = [...boxes].sort((a, b) => a.id - b.id);
-            list.innerHTML = sorted.map((b, i) => {
+            list.innerHTML = sorted.map((b) => {
                 const stroke = BOX_STROKE_PALETTE[boxes.findIndex(x => x.id === b.id) % BOX_STROKE_PALETTE.length];
                 const dist = (b.centroid_x - midlineX).toFixed(0);
                 const side = b.centroid_x < midlineX - 5 ? 'L' : (b.centroid_x > midlineX + 5 ? 'R' : 'C');
+                const hidden = hiddenBoxIds.has(b.id);
+                const eye = hidden ? '&#x25CB;' : '&#x25CF;'; // ○ hidden / ● visible
                 return `
-                    <div class="box-item" data-id="${b.id}" style="border-left-color:${stroke}">
+                    <div class="box-item${hidden ? ' hidden' : ''}" data-id="${b.id}" style="border-left-color:${stroke}">
+                        <button class="vis-btn" title="${hidden ? 'Show' : 'Hide'}">${eye}</button>
                         <div class="info">
                             <div class="title">#${b.id} · ${b.led_count} LEDs · ${side}</div>
                             <div class="meta">centroid (${b.centroid_x.toFixed(0)}, ${b.centroid_y.toFixed(0)}) · Δmid ${dist}</div>
@@ -582,6 +613,10 @@
                 el.querySelector('.delete-btn').addEventListener('click', e => {
                     e.stopPropagation();
                     deleteBox(id);
+                });
+                el.querySelector('.vis-btn').addEventListener('click', e => {
+                    e.stopPropagation();
+                    toggleBoxVisibility(id);
                 });
                 el.addEventListener('mouseenter', () => {
                     highlightBoxId = id;
@@ -597,6 +632,24 @@
                     draw();
                 });
             });
+        }
+
+        function toggleBoxVisibility(id) {
+            if (hiddenBoxIds.has(id)) hiddenBoxIds.delete(id);
+            else hiddenBoxIds.add(id);
+            persistHidden();
+            renderBoxList();
+            draw();
+        }
+
+        function setAllVisibility(hidden) {
+            hiddenBoxIds = hidden ? new Set(boxes.map(b => b.id)) : new Set();
+            persistHidden();
+            renderBoxList();
+            draw();
+            setStatus(hidden
+                ? 'All boxes hidden — empty regions are easy to spot now.'
+                : 'All boxes visible.');
         }
 
         function updatePendingDisplay() {
@@ -655,6 +708,8 @@
             document.getElementById('show-junctions-btn').classList.toggle('active', showJunctions);
             draw();
         });
+        document.getElementById('hide-all-btn').addEventListener('click', () => setAllVisibility(true));
+        document.getElementById('show-all-btn').addEventListener('click', () => setAllVisibility(false));
 
         window.addEventListener('resize', resizeCanvas);
 
