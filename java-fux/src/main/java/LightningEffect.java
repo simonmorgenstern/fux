@@ -99,14 +99,18 @@ public class LightningEffect implements Effect {
 
         // Check if it's time for a new strike
         if (timeSeconds >= nextStrikeTime) {
-            activeBolts.add(generateBolt(timeSeconds));
+            activeBolts.add(generateBolt(frameNumber));
             nextStrikeTime = timeSeconds + randomInterval();
         }
 
-        // Render and age active bolts
+        // Render and age active bolts. Aging is frame-based, not time-based:
+        // a slow first frame (JIT warmup, class loading, GC) would otherwise
+        // make the wall clock jump and expire a freshly-generated bolt before
+        // it ever gets rendered a second time, leaving the bright-white frame
+        // stuck on the LEDs for seconds.
         List<Bolt> expired = new ArrayList<>();
         for (Bolt bolt : activeBolts) {
-            int boltAge = (int) ((timeSeconds - bolt.strikeTime) * fps);
+            int boltAge = (int) (frameNumber - bolt.strikeFrame);
             if (boltAge > 15) {
                 expired.add(bolt);
             } else {
@@ -178,7 +182,7 @@ public class LightningEffect implements Effect {
 
     // --- Lightning ---
 
-    private Bolt generateBolt(double strikeTime) {
+    private Bolt generateBolt(long strikeFrame) {
         int startLED = random.nextInt(coords.getCount());
         int targetLength = boltLength + random.nextInt(11) - 5;
         targetLength = Math.max(15, Math.min(40, targetLength));
@@ -207,7 +211,7 @@ public class LightningEffect implements Effect {
         if (random.nextDouble() < 0.5) reflickerFrames.add(4);
         if (random.nextDouble() < 0.4) reflickerFrames.add(6);
 
-        return new Bolt(mainPath, branches, strikeTime, reflickerFrames);
+        return new Bolt(mainPath, branches, strikeFrame, reflickerFrames);
     }
 
     private void walkPath(int startLED, int maxSteps, Set<Integer> visited, List<Integer> path) {
@@ -311,14 +315,14 @@ public class LightningEffect implements Effect {
     private static class Bolt {
         final List<Integer> mainPath;
         final List<List<Integer>> branches;
-        final double strikeTime;
+        final long strikeFrame;
         final Set<Integer> reflickerFrames;
 
         Bolt(List<Integer> mainPath, List<List<Integer>> branches,
-             double strikeTime, Set<Integer> reflickerFrames) {
+             long strikeFrame, Set<Integer> reflickerFrames) {
             this.mainPath = mainPath;
             this.branches = branches;
-            this.strikeTime = strikeTime;
+            this.strikeFrame = strikeFrame;
             this.reflickerFrames = reflickerFrames;
         }
     }
