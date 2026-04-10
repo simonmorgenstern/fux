@@ -53,6 +53,10 @@ public class EffectEngine implements Runnable {
         add("forest_fire");
         add("lightning");
         add("firefly_sync");
+        add("box_bloom");
+        add("box_outline_trace");
+        add("box_breathe_grid");
+        add("box_ripple");
     }};
     
     // Callback for state updates
@@ -303,6 +307,18 @@ public class EffectEngine implements Runnable {
                     break;
                 case "lightning":
                     currentEffect = new LightningEffect();
+                    break;
+                case "box_bloom":
+                    currentEffect = new BoxBloomEffect();
+                    break;
+                case "box_outline_trace":
+                    currentEffect = new BoxOutlineTraceEffect();
+                    break;
+                case "box_breathe_grid":
+                    currentEffect = new BoxBreatheGridEffect();
+                    break;
+                case "box_ripple":
+                    currentEffect = new BoxRippleEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

@@ -1,0 +1,15 @@
+{
+  "name": "Box Bloom",
+  "description": "Closed boxes (cycles in the LED graph) bloom one symmetric pair at a time, sweeping outside-in across the fox",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "box_bloom",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "bloom_duration_sec": 2.2,
+    "spawn_interval_sec": 0.55,
+    "brightness": 1.0,
+    "outside_in": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Box Outline Trace",
+  "description": "Comets run around every box's perimeter; mirror pairs run in opposite directions for a symmetrical chase",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "box_outline_trace",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "speed_leds_per_sec": 18.0,
+    "trail_length": 6,
+    "brightness": 1.0,
+    "saturation": 0.85
+  }
+}

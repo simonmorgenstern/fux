@@ -8,6 +8,7 @@ const app = express();
 const PORT = 3000;
 const DATA_FILE = path.join(__dirname, 'led-groups.json');
 const CONNECTIONS_FILE = path.join(__dirname, 'led-connections.json');
+const BOXES_FILE = path.join(__dirname, 'led-boxes.json');
 
 // Middleware
 app.use(cors());
@@ -176,6 +177,159 @@ app.delete('/api/connections/all', async (req, res) => {
   } catch (err) {
     console.error('Error clearing connections:', err);
     res.status(500).json({ error: 'Failed to clear connections' });
+  }
+});
+
+// --- LED Boxes API (closed cycles in the connection graph) ---
+//
+// Schema (led-boxes.json):
+// {
+//   "description": "...",
+//   "midline_x": 230.0,
+//   "boxes": [
+//     { "id": 0, "name": "left ear",
+//       "perimeter": [12, 13, 14, ...],   // LED indices in cycle order
+//       "centroid_x": 144.0, "centroid_y": 434.0,
+//       "led_count": 17 }
+//   ]
+// }
+
+async function readBoxesFile() {
+  try {
+    await fs.access(BOXES_FILE);
+    const data = await fs.readFile(BOXES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    return { description: 'Closed boxes for symmetric LED effects', midline_x: 230.0, boxes: [] };
+  }
+}
+
+async function writeBoxesFile(doc) {
+  await fs.writeFile(BOXES_FILE, JSON.stringify(doc, null, 2));
+}
+
+async function readCoords() {
+  const coordsPath = path.join(__dirname, '..', 'assets', 'coords.json');
+  const data = await fs.readFile(coordsPath, 'utf8');
+  return JSON.parse(data);
+}
+
+// Centroids must live in the same coordinate system the Java backend uses
+// (assets/pixelCoordinates.json), NOT the editor display coords (assets/coords.json),
+// otherwise mirror-pair analysis on the Java side breaks.
+async function readPixelCoords() {
+  const p = path.join(__dirname, '..', 'assets', 'pixelCoordinates.json');
+  const data = await fs.readFile(p, 'utf8');
+  // pixelCoordinates.json is an array of {x,y,index}; index it by `index` for safe lookup.
+  const arr = JSON.parse(data);
+  const byIndex = new Array(arr.length);
+  for (const pt of arr) byIndex[pt.index] = pt;
+  return byIndex;
+}
+
+function computeCentroid(perimeter, coords) {
+  if (!perimeter || perimeter.length === 0) return { x: 0, y: 0 };
+  let sx = 0, sy = 0, n = 0;
+  for (const idx of perimeter) {
+    const c = coords[idx];
+    if (c) { sx += c.x; sy += c.y; n++; }
+  }
+  if (n === 0) return { x: 0, y: 0 };
+  return { x: Math.round((sx / n) * 10) / 10, y: Math.round((sy / n) * 10) / 10 };
+}
+
+async function enrichBox(box) {
+  const coords = await readPixelCoords();
+  const c = computeCentroid(box.perimeter, coords);
+  return {
+    id: box.id,
+    name: box.name || null,
+    perimeter: box.perimeter,
+    centroid_x: c.x,
+    centroid_y: c.y,
+    led_count: box.perimeter.length
+  };
+}
+
+app.get('/api/boxes', async (req, res) => {
+  try {
+    const doc = await readBoxesFile();
+    res.json(doc);
+  } catch (err) {
+    console.error('Error reading boxes:', err);
+    res.status(500).json({ error: 'Failed to read boxes' });
+  }
+});
+
+// Replace the entire boxes array (used by editor's auto-save)
+app.put('/api/boxes', async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!Array.isArray(body.boxes)) {
+      return res.status(400).json({ error: 'Body must contain a boxes array' });
+    }
+    const coords = await readPixelCoords();
+    const enriched = body.boxes.map((b, i) => {
+      if (!Array.isArray(b.perimeter) || b.perimeter.length < 3) {
+        throw new Error(`Box at index ${i} needs perimeter with at least 3 LEDs`);
+      }
+      const c = computeCentroid(b.perimeter, coords);
+      return {
+        id: typeof b.id === 'number' ? b.id : i,
+        name: b.name || null,
+        perimeter: b.perimeter,
+        centroid_x: c.x,
+        centroid_y: c.y,
+        led_count: b.perimeter.length
+      };
+    });
+    const doc = {
+      description: body.description || 'Closed boxes for symmetric LED effects',
+      midline_x: typeof body.midline_x === 'number' ? body.midline_x : 230.0,
+      boxes: enriched
+    };
+    await writeBoxesFile(doc);
+    res.json(doc);
+  } catch (err) {
+    console.error('Error writing boxes:', err);
+    res.status(500).json({ error: 'Failed to write boxes: ' + err.message });
+  }
+});
+
+// Append a single box
+app.post('/api/boxes', async (req, res) => {
+  try {
+    const incoming = req.body;
+    if (!incoming || !Array.isArray(incoming.perimeter) || incoming.perimeter.length < 3) {
+      return res.status(400).json({ error: 'Box needs a perimeter array with at least 3 LEDs' });
+    }
+    const doc = await readBoxesFile();
+    const nextId = (doc.boxes.reduce((m, b) => Math.max(m, b.id), -1)) + 1;
+    const enriched = await enrichBox({ ...incoming, id: nextId });
+    doc.boxes.push(enriched);
+    await writeBoxesFile(doc);
+    res.status(201).json(enriched);
+  } catch (err) {
+    console.error('Error appending box:', err);
+    res.status(500).json({ error: 'Failed to append box' });
+  }
+});
+
+// Delete a single box by id
+app.delete('/api/boxes/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const doc = await readBoxesFile();
+    const before = doc.boxes.length;
+    doc.boxes = doc.boxes.filter(b => b.id !== id);
+    if (doc.boxes.length === before) {
+      return res.status(404).json({ error: 'Box not found' });
+    }
+    await writeBoxesFile(doc);
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting box:', err);
+    res.status(500).json({ error: 'Failed to delete box' });
   }
 });
 

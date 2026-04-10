@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Box Editor - FUX</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+        header { text-align: center; margin-bottom: 16px; }
+        h1 { font-size: 28px; color: #a78bfa; margin-bottom: 4px; }
+        .subtitle { font-size: 15px; opacity: 0.8; }
+        .main-content { display: flex; flex: 1; gap: 24px; min-height: 0; }
+        .canvas-section { flex: 3; display: flex; flex-direction: column; }
+        .canvas-container {
+            flex: 1; border: 2px solid #334155; border-radius: 12px;
+            overflow: hidden; background: #1e293b; min-height: 400px; position: relative;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        .controls { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .mode-buttons { display: flex; gap: 8px; }
+        .btn {
+            padding: 10px 18px; background: #334155; color: #e2e8f0; border: none;
+            border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;
+        }
+        .btn:hover { background: #475569; }
+        .btn.active { background: #a78bfa; color: #1e293b; }
+        .btn.danger { background: #ef4444; }
+        .btn.danger:hover { background: #dc2626; }
+        .btn.success { background: #10b981; }
+        .btn.success:hover { background: #059669; }
+        .btn.warn { background: #f59e0b; color: #1e293b; }
+        .btn.warn:hover { background: #d97706; }
+        .status-bar {
+            padding: 8px 16px; background: #334155; border-radius: 8px;
+            font-size: 14px; flex: 1; min-width: 200px;
+        }
+        .status-bar .highlight { color: #a78bfa; font-weight: 600; }
+        .sidebar {
+            flex: 1; max-width: 380px; display: flex; flex-direction: column;
+            background: #1e293b; border-radius: 12px; padding: 20px; overflow: hidden;
+        }
+        .sidebar h2 { font-size: 20px; margin-bottom: 12px; color: #a78bfa; }
+        .stats { display: flex; gap: 12px; margin-bottom: 16px; }
+        .stat-box {
+            flex: 1; background: #334155; border-radius: 8px; padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #a78bfa; }
+        .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .box-list { flex: 1; overflow-y: auto; padding-right: 8px; }
+        .box-item {
+            background: #334155; border-radius: 6px; padding: 10px 12px;
+            margin-bottom: 6px; display: flex; justify-content: space-between;
+            align-items: center; font-size: 14px; cursor: pointer;
+            transition: background 0.15s; border-left: 4px solid #a78bfa;
+            gap: 8px;
+        }
+        .box-item:hover { background: #475569; }
+        .box-item .info { flex: 1; min-width: 0; }
+        .box-item .info .title { font-weight: 600; }
+        .box-item .info .meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .box-item .delete-btn {
+            background: none; border: none; color: #ef4444; cursor: pointer;
+            font-size: 18px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+        }
+        .box-item .delete-btn:hover { background: rgba(239,68,68,0.2); }
+        .pending-box {
+            background: rgba(167,139,250,0.15);
+            border: 1px dashed #a78bfa;
+            border-radius: 6px; padding: 8px 12px; margin-bottom: 12px;
+            font-size: 13px; color: #ddd6fe;
+        }
+        .loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #a78bfa; font-size: 18px;
+        }
+        footer { margin-top: 16px; text-align: center; font-size: 13px; color: #64748b; }
+        .nav-link { color: #a78bfa; text-decoration: none; }
+        .nav-link:hover { text-decoration: underline; }
+        .legend {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(15,23,42,0.85); border: 1px solid #334155;
+            border-radius: 8px; padding: 10px 14px; font-size: 12px;
+            line-height: 1.6; color: #cbd5e1;
+        }
+        .legend .swatch {
+            display: inline-block; width: 10px; height: 10px;
+            border-radius: 2px; margin-right: 6px; vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LED Box Editor</h1>
+        <p class="subtitle">
+            Click LEDs in order to define a closed box (the editor auto-traces the line between them).
+            Click the first LED again to close the loop, or press <b>Enter</b>.
+            <a class="nav-link" href="/connections.html">Connections</a> ·
+            <a class="nav-link" href="/visual.html">Group Editor</a>
+        </p>
+    </header>
+
+    <div class="main-content">
+        <section class="canvas-section">
+            <div class="canvas-container">
+                <div class="loading" id="loading">Loading…</div>
+                <canvas id="led-canvas"></canvas>
+                <div class="legend">
+                    <div><span class="swatch" style="background:#475569"></span>LED</div>
+                    <div><span class="swatch" style="background:#fbbf24"></span>Junction (deg≠2)</div>
+                    <div><span class="swatch" style="background:#22d3ee"></span>Connection</div>
+                    <div><span class="swatch" style="background:#a78bfa"></span>Box (saved)</div>
+                    <div><span class="swatch" style="background:#34d399"></span>Pending box</div>
+                    <div><span class="swatch" style="background:#f472b6"></span>Mirror preview</div>
+                </div>
+            </div>
+            <div class="controls">
+                <div class="mode-buttons">
+                    <button id="mode-build" class="btn active">Build</button>
+                    <button id="mode-delete" class="btn">Delete</button>
+                </div>
+                <button id="close-btn" class="btn success">Close Box (Enter)</button>
+                <button id="cancel-btn" class="btn">Cancel</button>
+                <button id="undo-btn" class="btn">Undo Pt</button>
+                <button id="show-mirrors-btn" class="btn">Show Mirrors</button>
+                <button id="show-junctions-btn" class="btn active">Show Junctions</button>
+                <button id="clear-all-btn" class="btn danger">Clear All</button>
+                <div class="status-bar" id="status-bar">
+                    Mode: <span class="highlight">Build</span> — click LEDs in cycle order
+                </div>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <h2>Boxes</h2>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="box-count">0</div>
+                    <div class="stat-label">Boxes</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="pending-count">0</div>
+                    <div class="stat-label">Pending pts</div>
+                </div>
+            </div>
+            <div id="pending-box-info" class="pending-box" style="display:none"></div>
+            <div class="box-list" id="box-list">
+                <div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No boxes yet.</div>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <p>Boxes saved to led-boxes.json — used by symmetric box effects (box_bloom, box_outline_trace, box_breathe_grid)</p>
+    </footer>
+
+    <script>
+    (function() {
+        // ---- State ----
+        let leds = [];                  // [{x, y, index}]
+        let connections = [];           // [[a, b], ...]
+        let adj = new Map();            // led -> Set of neighbors
+        let boxes = [];                 // [{id, name, perimeter, centroid_x, centroid_y, led_count}]
+        let midlineX = 230.0;
+        let mode = 'build';             // 'build' | 'delete'
+        let pendingPerimeter = [];      // current LED indices being defined
+        let hoveredLED = null;
+        let highlightBoxId = null;      // for hover preview
+        let highlightMirrorIds = [];    // for "show mirrors"
+        let showMirrors = false;
+        let showJunctions = true;
+        let scale = 1, offsetX = 0, offsetY = 0;
+
+        const canvas = document.getElementById('led-canvas');
+        const ctx = canvas.getContext('2d');
+        const LED_RADIUS = 5;
+        const BG = '#1e293b';
+        const LED_COLOR = '#475569';
+        const JUNCTION_COLOR = '#fbbf24';
+        const CONN_COLOR = '#22d3ee';
+        const HOVER_COLOR = '#f9fafb';
+        const PENDING_FILL = 'rgba(52, 211, 153, 0.25)';
+        const PENDING_STROKE = '#34d399';
+        const BOX_PALETTE = [
+            'rgba(167,139,250,0.30)', 'rgba(56,189,248,0.30)', 'rgba(248,113,113,0.30)',
+            'rgba(251,191,36,0.30)',  'rgba(52,211,153,0.30)', 'rgba(244,114,182,0.30)',
+            'rgba(96,165,250,0.30)',  'rgba(253,164,175,0.30)', 'rgba(132,204,22,0.30)'
+        ];
+        const BOX_STROKE_PALETTE = [
+            '#a78bfa', '#38bdf8', '#f87171', '#fbbf24',
+            '#34d399', '#f472b6', '#60a5fa', '#fda4af', '#84cc16'
+        ];
+        const HIGHLIGHT_STROKE = '#fbbf24';
+        const MIRROR_STROKE = '#f472b6';
+
+        // ---- Canvas plumbing ----
+        function resizeCanvas() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            fitToCanvas();
+            draw();
+        }
+        function fitToCanvas() {
+            if (leds.length === 0) return;
+            const padding = 30;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            leds.forEach(l => {
+                if (l.x < minX) minX = l.x;
+                if (l.x > maxX) maxX = l.x;
+                if (l.y < minY) minY = l.y;
+                if (l.y > maxY) maxY = l.y;
+            });
+            const w = maxX - minX, h = maxY - minY;
+            const sx = (canvas.width - padding * 2) / w;
+            const sy = (canvas.height - padding * 2) / h;
+            scale = Math.min(sx, sy);
+            offsetX = padding - minX * scale;
+            offsetY = padding - minY * scale;
+        }
+        function ledToCanvas(led) {
+            return { x: led.x * scale + offsetX, y: led.y * scale + offsetY };
+        }
+        function findLEDAt(cx, cy) {
+            const threshold = 14;
+            let closest = null, minD = Infinity;
+            for (const l of leds) {
+                const p = ledToCanvas(l);
+                const d = Math.hypot(p.x - cx, p.y - cy);
+                if (d < minD && d < threshold) { minD = d; closest = l; }
+            }
+            return closest;
+        }
+        function findBoxAt(cx, cy) {
+            // Returns the topmost box whose polygon contains the point
+            for (let i = boxes.length - 1; i >= 0; i--) {
+                const b = boxes[i];
+                if (pointInPolygon(cx, cy, b.perimeter.map(idx => ledToCanvas(leds[idx])))) {
+                    return b;
+                }
+            }
+            return null;
+        }
+        function pointInPolygon(px, py, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i].x, yi = poly[i].y;
+                const xj = poly[j].x, yj = poly[j].y;
+                const intersect = ((yi > py) !== (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi + 1e-12) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        // ---- Graph / pathfinding ----
+        function rebuildAdjacency() {
+            adj = new Map();
+            for (let i = 0; i < leds.length; i++) adj.set(i, new Set());
+            for (const [a, b] of connections) {
+                adj.get(a).add(b);
+                adj.get(b).add(a);
+            }
+        }
+        function isJunction(idx) {
+            const s = adj.get(idx);
+            return !s || s.size !== 2;
+        }
+        // BFS shortest path along the graph between from -> to. Returns [from, ..., to] or null.
+        function shortestPath(from, to) {
+            if (from === to) return [from];
+            const prev = new Map();
+            const visited = new Set();
+            const queue = [from];
+            visited.add(from);
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                for (const n of (adj.get(cur) || [])) {
+                    if (visited.has(n)) continue;
+                    visited.add(n);
+                    prev.set(n, cur);
+                    if (n === to) {
+                        const path = [to];
+                        let p = to;
+                        while (prev.has(p)) { p = prev.get(p); path.push(p); }
+                        return path.reverse();
+                    }
+                    queue.push(n);
+                }
+            }
+            return null;
+        }
+
+        // ---- Drawing ----
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Midline reference
+            const mid = ledToCanvas({ x: midlineX, y: 0 });
+            const midBottom = ledToCanvas({ x: midlineX, y: 1000 });
+            ctx.strokeStyle = 'rgba(248,113,113,0.25)';
+            ctx.setLineDash([4, 6]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(mid.x, 0);
+            ctx.lineTo(mid.x, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Connections
+            ctx.strokeStyle = CONN_COLOR;
+            ctx.globalAlpha = 0.35;
+            ctx.lineWidth = 1.5;
+            for (const [a, b] of connections) {
+                const pa = ledToCanvas(leds[a]);
+                const pb = ledToCanvas(leds[b]);
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            // Saved box polygons (filled)
+            boxes.forEach((b, i) => {
+                const fill = BOX_PALETTE[i % BOX_PALETTE.length];
+                let stroke = BOX_STROKE_PALETTE[i % BOX_STROKE_PALETTE.length];
+                if (b.id === highlightBoxId) stroke = HIGHLIGHT_STROKE;
+                else if (highlightMirrorIds.includes(b.id)) stroke = MIRROR_STROKE;
+                drawPolygon(b.perimeter, fill, stroke, 2.5);
+                // Centroid label
+                const cp = ledToCanvas({ x: b.centroid_x, y: b.centroid_y });
+                ctx.fillStyle = '#f1f5f9';
+                ctx.font = '11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('#' + b.id, cp.x, cp.y + 4);
+            });
+
+            // Pending perimeter
+            if (pendingPerimeter.length > 0) {
+                drawPolygon(pendingPerimeter, PENDING_FILL, PENDING_STROKE, 2.5, /*open*/ pendingPerimeter[0] !== pendingPerimeter[pendingPerimeter.length - 1] || pendingPerimeter.length < 3);
+            }
+
+            // LEDs
+            leds.forEach(l => {
+                const p = ledToCanvas(l);
+                const isHovered = hoveredLED && hoveredLED.index === l.index;
+                const inPending = pendingPerimeter.includes(l.index);
+                const junc = isJunction(l.index);
+
+                let r = LED_RADIUS;
+                let fill = LED_COLOR;
+                if (junc && showJunctions) { fill = JUNCTION_COLOR; r = LED_RADIUS + 1; }
+                if (inPending) { fill = PENDING_STROKE; r = LED_RADIUS + 1; }
+                if (isHovered) { fill = HOVER_COLOR; r = LED_RADIUS + 2; }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = fill;
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                if (isHovered || inPending) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '11px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(l.index, p.x, p.y - r - 4);
+                }
+            });
+        }
+
+        function drawPolygon(perimeter, fill, stroke, lineWidth, open) {
+            if (!perimeter || perimeter.length < 2) return;
+            ctx.beginPath();
+            for (let i = 0; i < perimeter.length; i++) {
+                const p = ledToCanvas(leds[perimeter[i]]);
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            if (!open) ctx.closePath();
+            if (fill && !open) {
+                ctx.fillStyle = fill;
+                ctx.fill();
+            }
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+
+        // ---- Editing ----
+        function setStatus(msg) {
+            document.getElementById('status-bar').innerHTML = msg;
+        }
+        function setMode(m) {
+            mode = m;
+            document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('mode-' + m).classList.add('active');
+            cancelPending();
+            const labels = {
+                build:  'Mode: <span class="highlight">Build</span> — click LEDs in cycle order (paths auto-trace)',
+                delete: 'Mode: <span class="highlight">Delete</span> — click a box to remove it'
+            };
+            setStatus(labels[m]);
+            draw();
+        }
+
+        function cancelPending() {
+            pendingPerimeter = [];
+            updatePendingDisplay();
+            draw();
+        }
+
+        function addPointToPending(idx) {
+            if (pendingPerimeter.length === 0) {
+                pendingPerimeter.push(idx);
+                updatePendingDisplay();
+                setStatus(`Build: started at LED <span class="highlight">${idx}</span>. Click next LED.`);
+                draw();
+                return;
+            }
+            const last = pendingPerimeter[pendingPerimeter.length - 1];
+            if (idx === last) return;
+
+            // Closing the loop?
+            if (idx === pendingPerimeter[0] && pendingPerimeter.length >= 3) {
+                closePending();
+                return;
+            }
+
+            const path = shortestPath(last, idx);
+            if (!path) {
+                setStatus(`No path along the connection graph from ${last} to ${idx}.`);
+                return;
+            }
+            // Append all but the first node (which is `last`)
+            for (let i = 1; i < path.length; i++) {
+                if (pendingPerimeter[pendingPerimeter.length - 1] !== path[i]) {
+                    pendingPerimeter.push(path[i]);
+                }
+            }
+            updatePendingDisplay();
+            setStatus(`Added LED <span class="highlight">${idx}</span> via ${path.length - 1}-step path. Total: ${pendingPerimeter.length} LEDs.`);
+            draw();
+        }
+
+        function undoPendingPoint() {
+            if (pendingPerimeter.length === 0) return;
+            // Remove the last junction-click. Easiest: pop until we reach a junction or empty.
+            pendingPerimeter.pop();
+            while (pendingPerimeter.length > 0 && !isJunction(pendingPerimeter[pendingPerimeter.length - 1])) {
+                pendingPerimeter.pop();
+            }
+            updatePendingDisplay();
+            draw();
+        }
+
+        async function closePending() {
+            if (pendingPerimeter.length < 3) {
+                setStatus(`Need at least 3 LEDs to close a box (have ${pendingPerimeter.length}).`);
+                return;
+            }
+            // If user closed by clicking start, last == first. Drop the duplicate.
+            if (pendingPerimeter[0] === pendingPerimeter[pendingPerimeter.length - 1]) {
+                pendingPerimeter.pop();
+            } else {
+                // Auto-close along the graph
+                const path = shortestPath(pendingPerimeter[pendingPerimeter.length - 1], pendingPerimeter[0]);
+                if (path && path.length > 1) {
+                    for (let i = 1; i < path.length - 1; i++) pendingPerimeter.push(path[i]);
+                } else if (!path) {
+                    setStatus('Cannot auto-close — no path back to start.');
+                    return;
+                }
+            }
+            try {
+                const res = await fetch('/api/boxes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ perimeter: pendingPerimeter })
+                });
+                if (!res.ok) throw new Error('save failed');
+                const newBox = await res.json();
+                boxes.push(newBox);
+                pendingPerimeter = [];
+                updatePendingDisplay();
+                renderBoxList();
+                draw();
+                setStatus(`Saved box <span class="highlight">#${newBox.id}</span> with ${newBox.led_count} LEDs.`);
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to save box: ' + err.message);
+            }
+        }
+
+        async function deleteBox(id) {
+            try {
+                const res = await fetch('/api/boxes/' + id, { method: 'DELETE' });
+                if (!res.ok) throw new Error('delete failed');
+                boxes = boxes.filter(b => b.id !== id);
+                renderBoxList();
+                draw();
+                setStatus(`Deleted box #${id}.`);
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to delete box: ' + err.message);
+            }
+        }
+
+        async function clearAll() {
+            if (!confirm(`Delete all ${boxes.length} boxes?`)) return;
+            try {
+                const res = await fetch('/api/boxes', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ midline_x: midlineX, boxes: [] })
+                });
+                if (!res.ok) throw new Error('clear failed');
+                boxes = [];
+                renderBoxList();
+                draw();
+                setStatus('All boxes cleared.');
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to clear: ' + err.message);
+            }
+        }
+
+        // ---- Mirror analysis ----
+        function findMirrorPartners(box) {
+            const mirrorX = 2 * midlineX - box.centroid_x;
+            const candidates = boxes
+                .filter(b => b.id !== box.id)
+                .map(b => ({
+                    box: b,
+                    dx: Math.abs(b.centroid_x - mirrorX),
+                    dy: Math.abs(b.centroid_y - box.centroid_y),
+                    sizeDiff: Math.abs(b.led_count - box.led_count)
+                }))
+                .filter(c => c.dx <= 60 && c.dy <= 60)
+                .sort((a, b) => (a.dx*a.dx + a.dy*a.dy + a.sizeDiff*a.sizeDiff*4)
+                              - (b.dx*b.dx + b.dy*b.dy + b.sizeDiff*b.sizeDiff*4));
+            return candidates.slice(0, 1).map(c => c.box.id);
+        }
+
+        // ---- Sidebar ----
+        function renderBoxList() {
+            document.getElementById('box-count').textContent = boxes.length;
+            const list = document.getElementById('box-list');
+            if (boxes.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No boxes yet.</div>';
+                return;
+            }
+            const sorted = [...boxes].sort((a, b) => a.id - b.id);
+            list.innerHTML = sorted.map((b, i) => {
+                const stroke = BOX_STROKE_PALETTE[boxes.findIndex(x => x.id === b.id) % BOX_STROKE_PALETTE.length];
+                const dist = (b.centroid_x - midlineX).toFixed(0);
+                const side = b.centroid_x < midlineX - 5 ? 'L' : (b.centroid_x > midlineX + 5 ? 'R' : 'C');
+                return `
+                    <div class="box-item" data-id="${b.id}" style="border-left-color:${stroke}">
+                        <div class="info">
+                            <div class="title">#${b.id} · ${b.led_count} LEDs · ${side}</div>
+                            <div class="meta">centroid (${b.centroid_x.toFixed(0)}, ${b.centroid_y.toFixed(0)}) · Δmid ${dist}</div>
+                        </div>
+                        <button class="delete-btn" title="Delete">&times;</button>
+                    </div>`;
+            }).join('');
+            list.querySelectorAll('.box-item').forEach(el => {
+                const id = parseInt(el.dataset.id, 10);
+                el.querySelector('.delete-btn').addEventListener('click', e => {
+                    e.stopPropagation();
+                    deleteBox(id);
+                });
+                el.addEventListener('mouseenter', () => {
+                    highlightBoxId = id;
+                    if (showMirrors) {
+                        const b = boxes.find(x => x.id === id);
+                        if (b) highlightMirrorIds = findMirrorPartners(b);
+                    }
+                    draw();
+                });
+                el.addEventListener('mouseleave', () => {
+                    highlightBoxId = null;
+                    highlightMirrorIds = [];
+                    draw();
+                });
+            });
+        }
+
+        function updatePendingDisplay() {
+            document.getElementById('pending-count').textContent = pendingPerimeter.length;
+            const el = document.getElementById('pending-box-info');
+            if (pendingPerimeter.length === 0) {
+                el.style.display = 'none';
+            } else {
+                el.style.display = 'block';
+                el.innerHTML = `<b>Pending:</b> ${pendingPerimeter.join(' → ')}`;
+            }
+        }
+
+        // ---- Event handlers ----
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            hoveredLED = findLEDAt(e.clientX - rect.left, e.clientY - rect.top);
+            draw();
+        });
+        canvas.addEventListener('mouseleave', () => { hoveredLED = null; draw(); });
+
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+            if (mode === 'build') {
+                const led = findLEDAt(cx, cy);
+                if (led) addPointToPending(led.index);
+            } else if (mode === 'delete') {
+                const box = findBoxAt(cx, cy);
+                if (box) deleteBox(box.id);
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') cancelPending();
+            if (e.key === 'Enter') { e.preventDefault(); closePending(); }
+            if (e.key === 'Backspace' && !e.target.matches('input,textarea')) {
+                e.preventDefault();
+                undoPendingPoint();
+            }
+        });
+
+        document.getElementById('mode-build').addEventListener('click', () => setMode('build'));
+        document.getElementById('mode-delete').addEventListener('click', () => setMode('delete'));
+        document.getElementById('close-btn').addEventListener('click', closePending);
+        document.getElementById('cancel-btn').addEventListener('click', cancelPending);
+        document.getElementById('undo-btn').addEventListener('click', undoPendingPoint);
+        document.getElementById('clear-all-btn').addEventListener('click', clearAll);
+        document.getElementById('show-mirrors-btn').addEventListener('click', () => {
+            showMirrors = !showMirrors;
+            document.getElementById('show-mirrors-btn').classList.toggle('active', showMirrors);
+            setStatus(showMirrors ? 'Mirror preview ON — hover a box to see its mirror partner.' : 'Mirror preview OFF.');
+        });
+        document.getElementById('show-junctions-btn').addEventListener('click', () => {
+            showJunctions = !showJunctions;
+            document.getElementById('show-junctions-btn').classList.toggle('active', showJunctions);
+            draw();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // ---- Init ----
+        async function init() {
+            try {
+                const [coordsRes, connRes, boxesRes] = await Promise.all([
+                    fetch('/api/coords'),
+                    fetch('/api/connections'),
+                    fetch('/api/boxes')
+                ]);
+                const coords = await coordsRes.json();
+                leds = coords.slice(0, 268).map(c => ({ x: c.x, y: c.y, index: c.index }));
+                connections = await connRes.json();
+                const doc = await boxesRes.json();
+                boxes = doc.boxes || [];
+                if (typeof doc.midline_x === 'number') midlineX = doc.midline_x;
+                rebuildAdjacency();
+                document.getElementById('loading').style.display = 'none';
+            } catch (err) {
+                document.getElementById('loading').textContent = 'Error loading data!';
+                console.error(err);
+                return;
+            }
+            renderBoxList();
+            updatePendingDisplay();
+            resizeCanvas();
+        }
+
+        init();
+    })();
+    </script>
+</body>
+</html>

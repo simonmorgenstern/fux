@@ -271,6 +271,10 @@ public class PreviewHttpHandler implements HttpHandler {
             case "forest_fire": return new ForestFireEffect();
             case "lightning": return new LightningEffect();
             case "firefly_sync": return new FireflySyncEffect();
+            case "box_bloom": return new BoxBloomEffect();
+            case "box_outline_trace": return new BoxOutlineTraceEffect();
+            case "box_breathe_grid": return new BoxBreatheGridEffect();
+            case "box_ripple": return new BoxRippleEffect();
             default: return null;
         }
     }

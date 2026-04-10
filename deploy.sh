@@ -6,10 +6,12 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/java-fux" && pwd)"
 EFFECTS_DIR="$(cd "$(dirname "$0")/effects" && pwd)"
+LED_NAMER_DIR="$(cd "$(dirname "$0")/led-namer" && pwd)"
 JAR="$PROJECT_ROOT/target/java-fux-1.0-SNAPSHOT.one-jar.jar"
 PI="pi@fux.local"
 PI_FUX_DIR="/home/pi/fux"
 PI_EFFECTS_DIR="/home/pi/fux-effects"
+PI_LED_NAMER_DIR="/home/pi/fux/led-namer"
 SSH_OPTS="-o StrictHostKeyChecking=no"
 
 # --- Helpers ---
@@ -46,7 +48,7 @@ ping -c 1 -W 3 fux.local >/dev/null 2>&1 || fail "Cannot reach fux.local — is 
 ok "Pi is reachable"
 
 # --- Ensure remote dirs ---
-sshpass -e ssh $SSH_OPTS "$PI" "mkdir -p $PI_FUX_DIR $PI_EFFECTS_DIR"
+sshpass -e ssh $SSH_OPTS "$PI" "mkdir -p $PI_FUX_DIR $PI_EFFECTS_DIR $PI_LED_NAMER_DIR"
 
 # --- Copy JAR ---
 info "Copying JAR to Pi..."
@@ -57,6 +59,15 @@ ok "JAR copied to $PI:$PI_FUX_DIR/"
 info "Syncing effect JSONs..."
 sshpass -e scp $SSH_OPTS "$EFFECTS_DIR"/*.json "$PI:$PI_EFFECTS_DIR/"
 ok "Effects synced to $PI:$PI_EFFECTS_DIR/"
+
+# --- Sync led-namer topology assets (connections + boxes) ---
+info "Syncing led-namer topology files..."
+sshpass -e scp $SSH_OPTS \
+  "$LED_NAMER_DIR/led-connections.json" \
+  "$LED_NAMER_DIR/led-boxes.json" \
+  "$LED_NAMER_DIR/led-groups.json" \
+  "$PI:$PI_LED_NAMER_DIR/"
+ok "Topology synced to $PI:$PI_LED_NAMER_DIR/"
 
 # --- Stop old server ---
 info "Stopping old server..."

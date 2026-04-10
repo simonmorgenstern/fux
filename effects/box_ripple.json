@@ -1,0 +1,15 @@
+{
+  "name": "Box Ripple",
+  "description": "Wavefronts emanate outward from the fox's vertical centerline; left and right mirror boxes light up in perfect lockstep",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "box_ripple",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "wave_speed_px_per_sec": 80.0,
+    "wave_width_px": 60.0,
+    "spawn_interval_sec": 1.6,
+    "brightness": 1.0
+  }
+}
