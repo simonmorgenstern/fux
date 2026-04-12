@@ -7,8 +7,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,13 +35,16 @@ public class LEDBoxTopology {
         public final Set<Integer> ledSet;     // perimeter as a set for O(1) lookup
         public final double centroidX;
         public final double centroidY;
+        /** Manually assigned mirror partner id from led-boxes.json, or null for auto. */
+        public final Integer mirrorBoxId;
 
-        Box(int id, List<Integer> perimeter, double cx, double cy) {
+        Box(int id, List<Integer> perimeter, double cx, double cy, Integer mirrorBoxId) {
             this.id = id;
             this.perimeter = Collections.unmodifiableList(new ArrayList<>(perimeter));
             this.ledSet = Collections.unmodifiableSet(new HashSet<>(perimeter));
             this.centroidX = cx;
             this.centroidY = cy;
+            this.mirrorBoxId = mirrorBoxId;
         }
     }
 
@@ -130,7 +135,11 @@ public class LEDBoxTopology {
             }
             double cx = bo.get("centroid_x").getAsDouble();
             double cy = bo.get("centroid_y").getAsDouble();
-            boxes.add(new Box(id, leds, cx, cy));
+            Integer mirrorBoxId = null;
+            if (bo.has("mirror_box_id") && !bo.get("mirror_box_id").isJsonNull()) {
+                mirrorBoxId = bo.get("mirror_box_id").getAsInt();
+            }
+            boxes.add(new Box(id, leds, cx, cy, mirrorBoxId));
         }
         computePairs();
         loaded = true;
@@ -139,7 +148,11 @@ public class LEDBoxTopology {
     }
 
     /**
-     * Mirror-pair matching in three passes:
+     * Mirror-pair matching in four passes:
+     *   0) boxes with an explicit mirror_box_id (set in the editor) pair up first,
+     *      no matter what the auto-matcher would have chosen. The sentinel
+     *      `mirror_box_id == self.id` means "I'm my own mirror, no partner"
+     *      (a box that straddles the midline).
      *   1) boxes with centroid within `selfTol` of the midline -> self-symmetric
      *   2) score every (left, right) candidate by mirror-distance + LED-count similarity,
      *      then assign greedily from best to worst (smallest cost wins)
@@ -155,8 +168,39 @@ public class LEDBoxTopology {
 
         boolean[] used = new boolean[boxes.size()];
 
+        // Index boxes by id so manual pairings can find partners in O(1).
+        Map<Integer, Integer> idToIdx = new HashMap<>();
+        for (int i = 0; i < boxes.size(); i++) idToIdx.put(boxes.get(i).id, i);
+
+        // 0) Manual mirror pairings from led-boxes.json override everything else.
+        //    Accept either direction: if A.mirrorBoxId == B.id we pair them, even if
+        //    B has no reciprocal entry (the editor always writes both sides, but be
+        //    lenient for hand-edited files). The sentinel `mirrorBoxId == id` marks
+        //    the box as self-symmetric (its own mirror, no partner).
+        for (int i = 0; i < boxes.size(); i++) {
+            if (used[i]) continue;
+            Box a = boxes.get(i);
+            if (a.mirrorBoxId == null) continue;
+            if (a.mirrorBoxId == a.id) {
+                pairs.add(new Pair(a, null, Math.abs(a.centroidX - midlineX)));
+                used[i] = true;
+                continue;
+            }
+            Integer jBoxed = idToIdx.get(a.mirrorBoxId);
+            if (jBoxed == null) continue;
+            int j = jBoxed;
+            if (j == i || used[j]) continue;
+            Box b = boxes.get(j);
+            Box left  = a.centroidX <= b.centroidX ? a : b;
+            Box right = (left == a) ? b : a;
+            pairs.add(new Pair(left, right, Math.abs(left.centroidX - midlineX)));
+            used[i] = true;
+            used[j] = true;
+        }
+
         // 1) self-symmetric (centroid on the midline)
         for (int i = 0; i < boxes.size(); i++) {
+            if (used[i]) continue;
             Box b = boxes.get(i);
             if (Math.abs(b.centroidX - midlineX) <= selfTol) {
                 pairs.add(new Pair(b, null, 0.0));
