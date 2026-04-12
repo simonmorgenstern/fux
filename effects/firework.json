@@ -1,12 +1,16 @@
 {
   "name": "Firework",
-  "description": "Firework explosions across the display",
-  "version": "1.0",
+  "description": "Vivid firework explosions with fast rockets and colorful bursts covering the fox",
+  "version": "2.0",
   "type": "procedural",
   "algorithm": "firework",
   "fps": 30,
-  "duration": 8,
+  "duration": 20,
   "parameters": {
-    "max_rockets": 3
+    "max_rockets": 3,
+    "spawn_chance": 0.08,
+    "min_particles": 80,
+    "max_particles": 140,
+    "fps": 30
   }
 }
