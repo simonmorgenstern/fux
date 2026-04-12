@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Mirror Pairs - FUX</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+        header { text-align: center; margin-bottom: 16px; }
+        h1 { font-size: 28px; color: #f472b6; margin-bottom: 4px; }
+        .subtitle { font-size: 15px; opacity: 0.8; }
+        .main-content { display: flex; flex: 1; gap: 24px; min-height: 0; }
+        .canvas-section { flex: 3; display: flex; flex-direction: column; }
+        .canvas-container {
+            flex: 1; border: 2px solid #334155; border-radius: 12px;
+            overflow: hidden; background: #1e293b; min-height: 400px; position: relative;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        .controls { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .btn {
+            padding: 10px 18px; background: #334155; color: #e2e8f0; border: none;
+            border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s;
+        }
+        .btn:hover { background: #475569; }
+        .btn.active { background: #f472b6; color: #1e293b; }
+        .btn.danger { background: #ef4444; }
+        .btn.danger:hover { background: #dc2626; }
+        .btn.success { background: #10b981; }
+        .btn.success:hover { background: #059669; }
+        .btn.warn { background: #f59e0b; color: #1e293b; }
+        .btn.warn:hover { background: #d97706; }
+        .status-bar {
+            padding: 8px 16px; background: #334155; border-radius: 8px;
+            font-size: 14px; flex: 1; min-width: 200px;
+        }
+        .status-bar .highlight { color: #f472b6; font-weight: 600; }
+        .sidebar {
+            flex: 1; max-width: 380px; display: flex; flex-direction: column;
+            background: #1e293b; border-radius: 12px; padding: 20px; overflow: hidden;
+        }
+        .sidebar h2 { font-size: 20px; margin-bottom: 12px; color: #f472b6; }
+        .stats { display: flex; gap: 12px; margin-bottom: 16px; }
+        .stat-box {
+            flex: 1; background: #334155; border-radius: 8px; padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: 700; color: #f472b6; }
+        .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .pair-list { flex: 1; overflow-y: auto; padding-right: 8px; }
+        .pair-item {
+            background: #334155; border-radius: 6px; padding: 10px 12px;
+            margin-bottom: 6px; display: flex; justify-content: space-between;
+            align-items: center; font-size: 14px; cursor: pointer;
+            transition: background 0.15s; border-left: 4px solid #f472b6;
+            gap: 8px;
+        }
+        .pair-item:hover { background: #475569; }
+        .pair-item .info { flex: 1; min-width: 0; }
+        .pair-item .title { font-weight: 600; }
+        .pair-item .meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .pair-item .delete-btn {
+            background: none; border: none; color: #ef4444; cursor: pointer;
+            font-size: 18px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
+        }
+        .pair-item .delete-btn:hover { background: rgba(239,68,68,0.2); }
+        .pair-item.self { border-left-color: #a78bfa; }
+        .pair-item.highlight { background: rgba(244,114,182,0.15); box-shadow: inset 0 0 0 1px rgba(244,114,182,0.5); }
+        .section-header {
+            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            color: #94a3b8; margin: 12px 0 6px 0; letter-spacing: 0.05em;
+        }
+        .section-header:first-child { margin-top: 0; }
+        footer { margin-top: 16px; text-align: center; font-size: 13px; color: #64748b; }
+        .nav-link { color: #f472b6; text-decoration: none; }
+        .nav-link:hover { text-decoration: underline; }
+        .legend {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(15,23,42,0.85); border: 1px solid #334155;
+            border-radius: 8px; padding: 10px 14px; font-size: 12px;
+            line-height: 1.6; color: #cbd5e1;
+        }
+        .legend .swatch {
+            display: inline-block; width: 10px; height: 10px;
+            border-radius: 2px; margin-right: 6px; vertical-align: middle;
+        }
+        .loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: #f472b6; font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LED Mirror Pairs</h1>
+        <p class="subtitle">
+            Click an LED to select it, then click its mirror partner. Use <b>Self</b> for LEDs with no partner.
+            <a class="nav-link" href="/boxes.html">Box Editor</a> ·
+            <a class="nav-link" href="/connections.html">Connections</a> ·
+            <a class="nav-link" href="/visual.html">Group Editor</a>
+        </p>
+    </header>
+
+    <div class="main-content">
+        <section class="canvas-section">
+            <div class="canvas-container">
+                <div class="loading" id="loading">Loading...</div>
+                <canvas id="led-canvas"></canvas>
+                <div class="legend">
+                    <div><span class="swatch" style="background:#475569"></span>Unpaired</div>
+                    <div><span class="swatch" style="background:#34d399"></span>Paired</div>
+                    <div><span class="swatch" style="background:#a78bfa"></span>Self-mirror</div>
+                    <div><span class="swatch" style="background:#fbbf24"></span>Selected</div>
+                    <div><span class="swatch" style="background:#f472b6"></span>Mirror phantom</div>
+                    <div><span class="swatch" style="background:#38bdf8"></span>Suggested match</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="self-btn" class="btn" style="background:#a78bfa;color:#1e293b;">Self (no partner)</button>
+                <button id="cancel-btn" class="btn">Cancel</button>
+                <button id="auto-pair-btn" class="btn success">Auto-pair All</button>
+                <button id="clear-all-btn" class="btn danger">Clear All</button>
+                <div class="status-bar" id="status-bar">
+                    Click an LED to start pairing.
+                </div>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <h2>Mirror Pairs</h2>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="paired-count">0</div>
+                    <div class="stat-label">Paired</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="self-count">0</div>
+                    <div class="stat-label">Self</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="unpaired-count">0</div>
+                    <div class="stat-label">Unpaired</div>
+                </div>
+            </div>
+            <div class="pair-list" id="pair-list">
+                <div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No pairs yet.</div>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <p>Saved to led-mirrors.json — per-LED mirror assignments for symmetric effects.</p>
+    </footer>
+
+    <script>
+    (function() {
+        // ---- State ----
+        let leds = [];              // [{x, y, index}]
+        let connections = [];       // [[a, b], ...]
+        let midlineX = 230.0;
+        let pairs = [];             // [[a, b], ...] where a<=b, self: [x,x]
+        let selectedLED = null;     // LED index currently selected
+        let hoveredLED = null;
+        let highlightPair = null;   // pair to highlight on hover
+        let scale = 1, offsetX = 0, offsetY = 0;
+
+        const LED_COUNT = 268;
+        const SNAP_DIST = 25;       // max distance for auto-pair snapping
+
+        const canvas = document.getElementById('led-canvas');
+        const ctx = canvas.getContext('2d');
+        const LED_RADIUS = 5;
+        const BG = '#1e293b';
+        const UNPAIRED_COLOR = '#475569';
+        const PAIRED_COLOR = '#34d399';
+        const SELF_COLOR = '#a78bfa';
+        const SELECTED_COLOR = '#fbbf24';
+        const PHANTOM_COLOR = '#f472b6';
+        const SUGGEST_COLOR = '#38bdf8';
+        const MIDLINE_COLOR = 'rgba(244,114,182,0.25)';
+        const CONN_COLOR = 'rgba(34,211,238,0.12)';
+        const PAIR_LINE_COLOR = 'rgba(52,211,153,0.5)';
+
+        // ---- Lookup helpers ----
+        function pairOf(idx) {
+            for (const p of pairs) {
+                if (p[0] === idx || p[1] === idx) return p;
+            }
+            return null;
+        }
+        function isPaired(idx) {
+            const p = pairOf(idx);
+            return p !== null && p[0] !== p[1];
+        }
+        function isSelf(idx) {
+            const p = pairOf(idx);
+            return p !== null && p[0] === p[1];
+        }
+        function isAssigned(idx) { return pairOf(idx) !== null; }
+
+        function mirrorPoint(led) {
+            return { x: 2 * midlineX - led.x, y: led.y };
+        }
+
+        function closestLED(x, y, exclude) {
+            let best = null, bd = Infinity;
+            for (const l of leds) {
+                if (exclude && exclude.has(l.index)) continue;
+                const d = Math.hypot(l.x - x, l.y - y);
+                if (d < bd) { bd = d; best = l; }
+            }
+            return { led: best, dist: bd };
+        }
+
+        // ---- Canvas plumbing ----
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            fitToView();
+            draw();
+        }
+
+        function fitToView() {
+            if (leds.length === 0) return;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const l of leds) {
+                if (l.x < minX) minX = l.x;
+                if (l.x > maxX) maxX = l.x;
+                if (l.y < minY) minY = l.y;
+                if (l.y > maxY) maxY = l.y;
+            }
+            const pad = 30;
+            const w = maxX - minX + pad * 2;
+            const h = maxY - minY + pad * 2;
+            scale = Math.min(canvas.width / w, canvas.height / h);
+            offsetX = (canvas.width - (maxX - minX) * scale) / 2 - minX * scale;
+            offsetY = (canvas.height - (maxY - minY) * scale) / 2 - minY * scale;
+        }
+
+        function ledToCanvas(l) {
+            return { x: l.x * scale + offsetX, y: l.y * scale + offsetY };
+        }
+
+        function findLEDAt(cx, cy) {
+            let best = null, bd = Infinity;
+            for (const l of leds) {
+                const p = ledToCanvas(l);
+                const d = Math.hypot(p.x - cx, p.y - cy);
+                if (d < bd) { bd = d; best = l; }
+            }
+            return bd < LED_RADIUS * 3 ? best : null;
+        }
+
+        // ---- Suggested match ----
+        function suggestedMatch() {
+            if (selectedLED === null) return null;
+            const led = leds[selectedLED];
+            if (!led) return null;
+            const mp = mirrorPoint(led);
+            const exclude = new Set([selectedLED]);
+            // Exclude already-assigned LEDs
+            for (const p of pairs) {
+                exclude.add(p[0]);
+                exclude.add(p[1]);
+            }
+            const { led: best, dist } = closestLED(mp.x, mp.y, exclude);
+            if (best && dist <= SNAP_DIST) return best.index;
+            return null;
+        }
+
+        // ---- Drawing ----
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Midline
+            const top = ledToCanvas({ x: midlineX, y: -50 });
+            const bot = ledToCanvas({ x: midlineX, y: 700 });
+            ctx.strokeStyle = MIDLINE_COLOR;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(top.x, 0);
+            ctx.lineTo(bot.x, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Connections (faint)
+            ctx.strokeStyle = CONN_COLOR;
+            ctx.lineWidth = 1;
+            for (const [a, b] of connections) {
+                if (!leds[a] || !leds[b]) continue;
+                const pa = ledToCanvas(leds[a]);
+                const pb = ledToCanvas(leds[b]);
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.stroke();
+            }
+
+            // Pair lines (green)
+            ctx.strokeStyle = PAIR_LINE_COLOR;
+            ctx.lineWidth = 2;
+            for (const p of pairs) {
+                if (p[0] === p[1]) continue;
+                const la = leds[p[0]], lb = leds[p[1]];
+                if (!la || !lb) continue;
+                const pa = ledToCanvas(la);
+                const pb = ledToCanvas(lb);
+                ctx.beginPath();
+                ctx.moveTo(pa.x, pa.y);
+                ctx.lineTo(pb.x, pb.y);
+                ctx.stroke();
+            }
+
+            // Highlighted pair line (bright)
+            if (highlightPair) {
+                const la = leds[highlightPair[0]], lb = leds[highlightPair[1]];
+                if (la && lb && highlightPair[0] !== highlightPair[1]) {
+                    const pa = ledToCanvas(la);
+                    const pb = ledToCanvas(lb);
+                    ctx.strokeStyle = '#34d399';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(pa.x, pa.y);
+                    ctx.lineTo(pb.x, pb.y);
+                    ctx.stroke();
+                }
+            }
+
+            // Mirror phantom + suggestion
+            const suggest = suggestedMatch();
+            if (selectedLED !== null && leds[selectedLED]) {
+                const mp = mirrorPoint(leds[selectedLED]);
+                const pp = ledToCanvas(mp);
+                // Phantom dot
+                ctx.beginPath();
+                ctx.arc(pp.x, pp.y, LED_RADIUS + 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(244,114,182,0.35)';
+                ctx.fill();
+                ctx.strokeStyle = PHANTOM_COLOR;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                // Dashed line from selected to phantom
+                ctx.setLineDash([4, 4]);
+                const sp = ledToCanvas(leds[selectedLED]);
+                ctx.strokeStyle = 'rgba(244,114,182,0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(sp.x, sp.y);
+                ctx.lineTo(pp.x, pp.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // LEDs
+            for (const l of leds) {
+                const p = ledToCanvas(l);
+                const isHovered = hoveredLED && hoveredLED.index === l.index;
+                const isSelected = l.index === selectedLED;
+                const isSug = l.index === suggest;
+
+                let r = LED_RADIUS;
+                let fill = UNPAIRED_COLOR;
+                if (isSelf(l.index)) { fill = SELF_COLOR; }
+                else if (isPaired(l.index)) { fill = PAIRED_COLOR; }
+                if (isSug) { fill = SUGGEST_COLOR; r = LED_RADIUS + 2; }
+                if (isSelected) { fill = SELECTED_COLOR; r = LED_RADIUS + 3; }
+                if (isHovered && !isSelected) { r = LED_RADIUS + 2; }
+
+                // Highlight pair members on hover
+                if (highlightPair && (highlightPair[0] === l.index || highlightPair[1] === l.index)) {
+                    fill = '#34d399'; r = LED_RADIUS + 2;
+                }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = fill;
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Labels for selected, hovered, or suggestion
+                if (isSelected || isHovered || isSug) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '11px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(l.index, p.x, p.y - r - 4);
+                }
+            }
+        }
+
+        // ---- Pair management ----
+        function addPair(a, b) {
+            // Remove any existing pair involving a or b
+            removeLED(a);
+            removeLED(b);
+            const lo = Math.min(a, b), hi = Math.max(a, b);
+            pairs.push([lo, hi]);
+            save();
+        }
+
+        function addSelf(idx) {
+            removeLED(idx);
+            pairs.push([idx, idx]);
+            save();
+        }
+
+        function removeLED(idx) {
+            pairs = pairs.filter(p => p[0] !== idx && p[1] !== idx);
+        }
+
+        function removePair(a, b) {
+            pairs = pairs.filter(p => !(p[0] === a && p[1] === b));
+            save();
+        }
+
+        async function save() {
+            selectedLED = null;
+            renderList();
+            draw();
+            try {
+                await fetch('/api/led-mirrors', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ midline_x: midlineX, pairs })
+                });
+            } catch (err) {
+                console.error('save failed:', err);
+                setStatus('Failed to save: ' + err.message);
+            }
+        }
+
+        function setStatus(msg) {
+            document.getElementById('status-bar').innerHTML = msg;
+        }
+
+        // ---- Auto-pair ----
+        function autoPairAll() {
+            // Greedy: compute mirror point for every unassigned LED, sort
+            // candidates by distance, assign from best to worst.
+            const assigned = new Set();
+            for (const p of pairs) { assigned.add(p[0]); assigned.add(p[1]); }
+
+            const candidates = [];
+            for (const l of leds) {
+                if (assigned.has(l.index)) continue;
+                const mp = mirrorPoint(l);
+                for (const r of leds) {
+                    if (r.index === l.index) continue;
+                    if (assigned.has(r.index)) continue;
+                    if (r.index <= l.index) continue; // avoid duplicate (a,b) and (b,a)
+                    const d = Math.hypot(r.x - mp.x, r.y - mp.y);
+                    if (d <= SNAP_DIST) candidates.push({ a: l.index, b: r.index, d });
+                }
+            }
+            candidates.sort((a, b) => a.d - b.d);
+
+            let added = 0;
+            for (const c of candidates) {
+                if (assigned.has(c.a) || assigned.has(c.b)) continue;
+                const lo = Math.min(c.a, c.b), hi = Math.max(c.a, c.b);
+                pairs.push([lo, hi]);
+                assigned.add(c.a);
+                assigned.add(c.b);
+                added++;
+            }
+
+            // Remaining unassigned LEDs near the midline -> self-mirror
+            for (const l of leds) {
+                if (assigned.has(l.index)) continue;
+                if (Math.abs(l.x - midlineX) <= 18) {
+                    pairs.push([l.index, l.index]);
+                    assigned.add(l.index);
+                    added++;
+                }
+            }
+
+            save();
+            setStatus(`Auto-paired ${added} LED${added !== 1 ? 's' : ''}. ${LED_COUNT - assigned.size} still unassigned.`);
+        }
+
+        // ---- Event handlers ----
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            hoveredLED = findLEDAt(e.clientX - rect.left, e.clientY - rect.top);
+            draw();
+        });
+        canvas.addEventListener('mouseleave', () => { hoveredLED = null; draw(); });
+
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const led = findLEDAt(e.clientX - rect.left, e.clientY - rect.top);
+            if (!led) return;
+
+            if (selectedLED === null) {
+                // First click: select
+                selectedLED = led.index;
+                const side = led.x < midlineX - 5 ? 'L' : (led.x > midlineX + 5 ? 'R' : 'C');
+                setStatus(`Selected LED <span class="highlight">${led.index}</span> (${side}). Click its mirror partner, or press <b>Self</b>.`);
+                draw();
+            } else if (led.index === selectedLED) {
+                // Clicked same LED again: mark as self
+                addSelf(led.index);
+                setStatus(`Marked LED <span class="highlight">${led.index}</span> as self-mirror.`);
+            } else {
+                // Second click: pair
+                addPair(selectedLED, led.index);
+                setStatus(`Paired LED <span class="highlight">${Math.min(selectedLED, led.index)}</span> ↔ <span class="highlight">${Math.max(selectedLED, led.index)}</span>.`);
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                selectedLED = null;
+                setStatus('Selection cancelled.');
+                draw();
+            }
+        });
+
+        document.getElementById('self-btn').addEventListener('click', () => {
+            if (selectedLED !== null) {
+                addSelf(selectedLED);
+                setStatus(`Marked LED <span class="highlight">${selectedLED}</span> as self-mirror.`);
+            } else {
+                setStatus('Select an LED first, then press Self.');
+            }
+        });
+
+        document.getElementById('cancel-btn').addEventListener('click', () => {
+            selectedLED = null;
+            setStatus('Selection cancelled.');
+            draw();
+        });
+
+        document.getElementById('auto-pair-btn').addEventListener('click', () => {
+            autoPairAll();
+        });
+
+        document.getElementById('clear-all-btn').addEventListener('click', () => {
+            if (!confirm('Clear all mirror pairs?')) return;
+            pairs = [];
+            save();
+            setStatus('All pairs cleared.');
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // ---- Sidebar list ----
+        function renderList() {
+            const selfPairs = pairs.filter(p => p[0] === p[1]).sort((a, b) => a[0] - b[0]);
+            const mirrorPairs = pairs.filter(p => p[0] !== p[1]).sort((a, b) => a[0] - b[0]);
+
+            const assigned = new Set();
+            for (const p of pairs) { assigned.add(p[0]); assigned.add(p[1]); }
+            const unpairedCount = LED_COUNT - assigned.size;
+
+            document.getElementById('paired-count').textContent = mirrorPairs.length;
+            document.getElementById('self-count').textContent = selfPairs.length;
+            document.getElementById('unpaired-count').textContent = unpairedCount;
+
+            const list = document.getElementById('pair-list');
+            let html = '';
+
+            if (mirrorPairs.length > 0) {
+                html += '<div class="section-header">Mirror Pairs</div>';
+                for (const p of mirrorPairs) {
+                    const la = leds[p[0]], lb = leds[p[1]];
+                    const sideA = la ? (la.x < midlineX - 5 ? 'L' : 'R') : '?';
+                    const sideB = lb ? (lb.x < midlineX - 5 ? 'L' : 'R') : '?';
+                    html += `
+                        <div class="pair-item" data-a="${p[0]}" data-b="${p[1]}">
+                            <div class="info">
+                                <div class="title">${p[0]} (${sideA}) ↔ ${p[1]} (${sideB})</div>
+                            </div>
+                            <button class="delete-btn" title="Unpair">&times;</button>
+                        </div>`;
+                }
+            }
+
+            if (selfPairs.length > 0) {
+                html += '<div class="section-header">Self-mirror</div>';
+                for (const p of selfPairs) {
+                    html += `
+                        <div class="pair-item self" data-a="${p[0]}" data-b="${p[1]}">
+                            <div class="info">
+                                <div class="title">${p[0]} (self)</div>
+                            </div>
+                            <button class="delete-btn" title="Remove">&times;</button>
+                        </div>`;
+                }
+            }
+
+            if (unpairedCount > 0) {
+                html += '<div class="section-header">Unpaired (' + unpairedCount + ')</div>';
+                const unpaired = [];
+                for (let i = 0; i < LED_COUNT; i++) {
+                    if (!assigned.has(i)) unpaired.push(i);
+                }
+                // Show in compact format
+                html += '<div style="font-size:12px;color:#94a3b8;padding:4px 8px;line-height:1.8;">';
+                html += unpaired.map(i => {
+                    const l = leds[i];
+                    const side = l ? (l.x < midlineX - 5 ? 'L' : (l.x > midlineX + 5 ? 'R' : 'C')) : '?';
+                    return `<span style="cursor:pointer;padding:1px 4px;border-radius:3px;background:#334155;margin:1px;" onclick="window._selectLED(${i})">${i}<sup style="font-size:9px;color:#64748b;">${side}</sup></span>`;
+                }).join(' ');
+                html += '</div>';
+            }
+
+            if (html === '') {
+                html = '<div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No pairs yet.</div>';
+            }
+
+            list.innerHTML = html;
+
+            // Attach event listeners
+            list.querySelectorAll('.pair-item').forEach(el => {
+                const a = parseInt(el.dataset.a, 10);
+                const b = parseInt(el.dataset.b, 10);
+                el.querySelector('.delete-btn').addEventListener('click', e => {
+                    e.stopPropagation();
+                    removePair(a, b);
+                    setStatus(`Removed pair ${a} ↔ ${b}.`);
+                });
+                el.addEventListener('mouseenter', () => {
+                    highlightPair = [a, b];
+                    draw();
+                });
+                el.addEventListener('mouseleave', () => {
+                    highlightPair = null;
+                    draw();
+                });
+            });
+        }
+
+        // Global helper for compact unpaired list clicks
+        window._selectLED = function(idx) {
+            selectedLED = idx;
+            const l = leds[idx];
+            const side = l ? (l.x < midlineX - 5 ? 'L' : (l.x > midlineX + 5 ? 'R' : 'C')) : '?';
+            setStatus(`Selected LED <span class="highlight">${idx}</span> (${side}). Click its mirror partner, or press <b>Self</b>.`);
+            draw();
+        };
+
+        // ---- Init ----
+        async function init() {
+            try {
+                const [coordsRes, connRes, mirrorsRes] = await Promise.all([
+                    fetch('/api/coords'),
+                    fetch('/api/connections'),
+                    fetch('/api/led-mirrors')
+                ]);
+                const coords = await coordsRes.json();
+                leds = coords.slice(0, LED_COUNT).map(c => ({ x: c.x, y: c.y, index: c.index }));
+                connections = await connRes.json();
+                const doc = await mirrorsRes.json();
+                pairs = doc.pairs || [];
+                if (typeof doc.midline_x === 'number') midlineX = doc.midline_x;
+                document.getElementById('loading').style.display = 'none';
+            } catch (err) {
+                document.getElementById('loading').textContent = 'Error loading data!';
+                console.error(err);
+                return;
+            }
+            renderList();
+            resizeCanvas();
+        }
+
+        init();
+    })();
+    </script>
+</body>
+</html>

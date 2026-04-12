@@ -78,8 +78,38 @@
             font-size: 16px; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;
         }
         .box-item .vis-btn:hover { background: rgba(167,139,250,0.2); }
+        .box-item .pair-btn {
+            background: rgba(52,211,153,0.18); border: 1px solid #34d399; color: #34d399;
+            cursor: pointer; font-size: 13px; font-weight: 700; padding: 2px 8px;
+            border-radius: 4px; flex-shrink: 0;
+        }
+        .box-item .pair-btn:hover { background: rgba(52,211,153,0.35); }
+        .box-item .unpair-btn {
+            background: rgba(239,68,68,0.15); border: 1px solid #f87171; color: #f87171;
+            cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;
+            border-radius: 4px; flex-shrink: 0;
+        }
+        .box-item .unpair-btn:hover { background: rgba(239,68,68,0.3); }
+        .box-item .self-btn {
+            background: rgba(167,139,250,0.18); border: 1px solid #a78bfa; color: #a78bfa;
+            cursor: pointer; font-size: 11px; font-weight: 700; padding: 2px 6px;
+            border-radius: 4px; flex-shrink: 0;
+        }
+        .box-item .self-btn:hover { background: rgba(167,139,250,0.35); }
         .box-item.hidden { opacity: 0.45; border-left-color: #475569 !important; }
         .box-item.hidden .vis-btn { color: #64748b; }
+        .box-item.review {
+            background: rgba(34, 211, 238, 0.18);
+            box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.6);
+        }
+        .box-item .badge {
+            font-size: 11px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+            font-weight: 600; min-width: 22px; text-align: center;
+        }
+        .badge.ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge.warn { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+        .badge.bad { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+        .badge.manual { background: rgba(56,189,248,0.22); color: #38bdf8; }
         .pending-box {
             background: rgba(167,139,250,0.15);
             border: 1px dashed #a78bfa;
@@ -112,7 +142,8 @@
             Click LEDs in order to define a closed box (the editor auto-traces the line between them).
             Click the first LED again to close the loop, or press <b>Enter</b>.
             <a class="nav-link" href="/connections.html">Connections</a> ·
-            <a class="nav-link" href="/visual.html">Group Editor</a>
+            <a class="nav-link" href="/visual.html">Group Editor</a> ·
+            <a class="nav-link" href="/mirrors.html">LED Mirrors</a>
         </p>
     </header>
 
@@ -127,7 +158,10 @@
                     <div><span class="swatch" style="background:#22d3ee"></span>Connection</div>
                     <div><span class="swatch" style="background:#a78bfa"></span>Box (saved)</div>
                     <div><span class="swatch" style="background:#34d399"></span>Pending box</div>
-                    <div><span class="swatch" style="background:#f472b6"></span>Mirror preview</div>
+                    <div><span class="swatch" style="background:#22d3ee"></span>Reviewed box</div>
+                    <div><span class="swatch" style="background:#f472b6"></span>Mirror phantom</div>
+                    <div><span class="swatch" style="background:#10b981"></span>Mirror match</div>
+                    <div><span class="swatch" style="background:#38bdf8"></span>Manual pair (↔)</div>
                 </div>
             </div>
             <div class="controls">
@@ -157,9 +191,17 @@
                     <div class="stat-label">Boxes</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value" id="pending-count">0</div>
-                    <div class="stat-label">Pending pts</div>
+                    <div class="stat-value" id="mirror-clean-count">0</div>
+                    <div class="stat-label">Clean mirror</div>
                 </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="mirror-bad-count">0</div>
+                    <div class="stat-label">Unmatched</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button id="next-unmatched-btn" class="btn warn" style="flex:1;padding:6px 10px;font-size:13px;">Next Unmatched</button>
+                <button id="clear-review-btn" class="btn" style="flex:1;padding:6px 10px;font-size:13px;">Clear Review</button>
             </div>
             <div id="pending-box-info" class="pending-box" style="display:none"></div>
             <div class="box-list" id="box-list">
@@ -188,6 +230,10 @@
         let showMirrors = false;
         let showJunctions = true;
         let hiddenBoxIds = new Set();   // box ids the user has toggled off
+        let reviewBoxId = null;         // box currently in mirror-review
+        let mirrorAnalysisCache = new Map(); // boxId -> { phantomLeds, matchBoxId, score, missing }
+        const MIRROR_SNAP_DIST = 25;    // px in pixelCoordinates space; LED snap radius
+        const MIRROR_GOOD_SCORE = 0.75; // Jaccard threshold for "✓ has clean mirror"
         let scale = 1, offsetX = 0, offsetY = 0;
 
         // Persist visibility across reloads (UI-only, never written to led-boxes.json)
@@ -369,6 +415,30 @@
                 ctx.fillText('#' + b.id, cp.x, cp.y + 4);
             });
 
+            // Mirror review overlay: selected box (cyan), phantom mirror (dashed pink),
+            // and best existing match (dashed green) drawn on top of everything else.
+            if (reviewBoxId !== null) {
+                const sel = boxes.find(b => b.id === reviewBoxId);
+                if (sel) {
+                    drawPolygon(sel.perimeter, 'rgba(34, 211, 238, 0.20)', '#22d3ee', 4);
+
+                    const a = getMirrorAnalysis(sel);
+                    if (a.phantom.length >= 3) {
+                        ctx.setLineDash([8, 5]);
+                        drawPolygon(a.phantom, 'rgba(244, 114, 182, 0.15)', '#f472b6', 3);
+                        ctx.setLineDash([]);
+                    }
+                    if (a.matchBoxId !== null && a.matchBoxId !== reviewBoxId) {
+                        const m = boxes.find(b => b.id === a.matchBoxId);
+                        if (m) {
+                            ctx.setLineDash([3, 3]);
+                            drawPolygon(m.perimeter, null, '#10b981', 4, true);
+                            ctx.setLineDash([]);
+                        }
+                    }
+                }
+            }
+
             // Pending perimeter
             if (pendingPerimeter.length > 0) {
                 drawPolygon(pendingPerimeter, PENDING_FILL, PENDING_STROKE, 2.5, /*open*/ pendingPerimeter[0] !== pendingPerimeter[pendingPerimeter.length - 1] || pendingPerimeter.length < 3);
@@ -516,6 +586,7 @@
                 if (!res.ok) throw new Error('save failed');
                 const newBox = await res.json();
                 boxes.push(newBox);
+                invalidateMirrorCache();
                 pendingPerimeter = [];
                 updatePendingDisplay();
                 renderBoxList();
@@ -532,8 +603,10 @@
                 const res = await fetch('/api/boxes/' + id, { method: 'DELETE' });
                 if (!res.ok) throw new Error('delete failed');
                 boxes = boxes.filter(b => b.id !== id);
+                if (reviewBoxId === id) reviewBoxId = null;
                 hiddenBoxIds.delete(id);
                 persistHidden();
+                invalidateMirrorCache();
                 renderBoxList();
                 draw();
                 setStatus(`Deleted box #${id}.`);
@@ -553,12 +626,118 @@
                 });
                 if (!res.ok) throw new Error('clear failed');
                 boxes = [];
+                reviewBoxId = null;
+                invalidateMirrorCache();
                 renderBoxList();
                 draw();
                 setStatus('All boxes cleared.');
             } catch (err) {
                 console.error(err);
                 setStatus('Failed to clear: ' + err.message);
+            }
+        }
+
+        // ---- Persistence of manual mirror pairings ----
+        // POST /api/boxes only takes a perimeter and assigns a new id, so to
+        // change fields on existing boxes (like mirror_box_id) we rewrite the
+        // whole document via PUT. The server normalises + returns enriched boxes.
+        async function saveAllBoxes() {
+            const payload = {
+                midline_x: midlineX,
+                boxes: boxes.map(b => ({
+                    id: b.id,
+                    name: b.name || null,
+                    perimeter: b.perimeter,
+                    mirror_box_id: (b.mirror_box_id === undefined) ? null : b.mirror_box_id
+                }))
+            };
+            const res = await fetch('/api/boxes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('save failed');
+            const doc = await res.json();
+            if (Array.isArray(doc.boxes)) boxes = doc.boxes;
+        }
+
+        /**
+         * Hard-assign box A and B as each other's mirror partners. Any previous
+         * manual pair involving either side is cleared first so the pairing stays
+         * symmetric (no dangling partners pointing at a box that now pairs with
+         * someone else).
+         */
+        async function pairBoxes(idA, idB) {
+            if (idA === idB) return;
+            const a = boxes.find(x => x.id === idA);
+            const b = boxes.find(x => x.id === idB);
+            if (!a || !b) return;
+            // Clear any stale partners that previously pointed at A or B.
+            for (const box of boxes) {
+                if (box.id === idA || box.id === idB) continue;
+                if (box.mirror_box_id === idA || box.mirror_box_id === idB) {
+                    box.mirror_box_id = null;
+                }
+            }
+            a.mirror_box_id = idB;
+            b.mirror_box_id = idA;
+            try {
+                await saveAllBoxes();
+                invalidateMirrorCache();
+                renderBoxList();
+                draw();
+                setStatus(`Paired #${idA} ↔ #${idB} as mirror partners.`);
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to pair: ' + err.message);
+            }
+        }
+
+        /**
+         * Mark a box as its own mirror (self-symmetric / no partner). Any
+         * existing manual partner pointing at this box is cleared first so we
+         * don't leave a dangling reference from the old partner.
+         */
+        async function markSelfMirror(id) {
+            const box = boxes.find(x => x.id === id);
+            if (!box) return;
+            for (const other of boxes) {
+                if (other.id === id) continue;
+                if (other.mirror_box_id === id) other.mirror_box_id = null;
+            }
+            box.mirror_box_id = id;
+            try {
+                await saveAllBoxes();
+                invalidateMirrorCache();
+                renderBoxList();
+                draw();
+                setStatus(`Marked #${id} as self-mirror (no partner needed).`);
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to mark self-mirror: ' + err.message);
+            }
+        }
+
+        async function unpairBox(id) {
+            const box = boxes.find(x => x.id === id);
+            if (!box) return;
+            const partnerId = box.mirror_box_id;
+            box.mirror_box_id = null;
+            if (partnerId !== null && partnerId !== undefined) {
+                const partner = boxes.find(x => x.id === partnerId);
+                if (partner && partner.mirror_box_id === id) {
+                    partner.mirror_box_id = null;
+                }
+            }
+            try {
+                await saveAllBoxes();
+                invalidateMirrorCache();
+                renderBoxList();
+                draw();
+                setStatus(`Unpaired #${id} — mirror will fall back to auto-detection.`);
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to unpair: ' + err.message);
             }
         }
 
@@ -579,6 +758,218 @@
             return candidates.slice(0, 1).map(c => c.box.id);
         }
 
+        /**
+         * For a given box, walk its perimeter and reflect each LED across the
+         * vertical midline, snapping each reflected point to the closest real LED.
+         * Returns the phantom perimeter as an ordered list of LED indices, plus
+         * the count of LEDs that had no nearby snap target (missing pixels).
+         */
+        function computeMirrorPhantom(box) {
+            const phantom = [];
+            let missing = 0;
+            for (const idx of box.perimeter) {
+                const led = leds[idx];
+                if (!led) { missing++; continue; }
+                const mx = 2 * midlineX - led.x;
+                const my = led.y;
+                let best = null, bestDist = Infinity;
+                for (const cand of leds) {
+                    const d = Math.hypot(cand.x - mx, cand.y - my);
+                    if (d < bestDist) { bestDist = d; best = cand; }
+                }
+                if (best && bestDist <= MIRROR_SNAP_DIST) {
+                    phantom.push(best.index);
+                } else {
+                    missing++;
+                }
+            }
+            return { phantom, missing };
+        }
+
+        /**
+         * Find the existing box whose LED set is most similar (Jaccard) to the
+         * given target set. Self-matches are excluded unless `allowSelf` is true
+         * (used when a box is its own mirror because it sits on the midline).
+         */
+        function bestMatchingBox(targetSet, excludeId, allowSelf) {
+            let best = null, bestScore = 0;
+            for (const b of boxes) {
+                if (!allowSelf && b.id === excludeId) continue;
+                const bset = new Set(b.perimeter);
+                let inter = 0;
+                for (const x of bset) if (targetSet.has(x)) inter++;
+                const union = bset.size + targetSet.size - inter;
+                const score = union > 0 ? inter / union : 0;
+                if (score > bestScore) { bestScore = score; best = b; }
+            }
+            return { box: best, score: bestScore };
+        }
+
+        /**
+         * Run the mirror analysis for a single box and cache the result.
+         * The cache is invalidated whenever boxes are added or removed.
+         *
+         * Manual mirror assignments (`box.mirror_box_id`) take precedence over
+         * the auto-matcher: if a partner id is set and resolves to an existing
+         * box, that wins with score=1.0 regardless of geometric fit.
+         */
+        function getMirrorAnalysis(box) {
+            if (mirrorAnalysisCache.has(box.id)) return mirrorAnalysisCache.get(box.id);
+            const { phantom, missing } = computeMirrorPhantom(box);
+
+            // Manual pairing takes priority. The self-mirror sentinel is
+            // `mirror_box_id === box.id`, meaning "this box is its own mirror
+            // (straddles the midline / has no partner)" — no ⚠, no auto-match.
+            if (box.mirror_box_id !== null && box.mirror_box_id !== undefined) {
+                if (box.mirror_box_id === box.id) {
+                    const analysis = {
+                        phantom,
+                        missing,
+                        matchBoxId: box.id,
+                        score: 1.0,
+                        isClean: true,
+                        manual: true,
+                        selfMirror: true
+                    };
+                    mirrorAnalysisCache.set(box.id, analysis);
+                    return analysis;
+                }
+                const partner = boxes.find(b => b.id === box.mirror_box_id);
+                if (partner) {
+                    const analysis = {
+                        phantom,
+                        missing,
+                        matchBoxId: partner.id,
+                        score: 1.0,
+                        isClean: true,
+                        manual: true,
+                        selfMirror: false
+                    };
+                    mirrorAnalysisCache.set(box.id, analysis);
+                    return analysis;
+                }
+            }
+
+            const phantomSet = new Set(phantom);
+            // A box that straddles or sits on the midline is its own mirror; allow self-match.
+            const onMidline = Math.abs(box.centroid_x - midlineX) <= 18;
+            const { box: matchBox, score } = bestMatchingBox(phantomSet, box.id, onMidline);
+            const analysis = {
+                phantom,
+                missing,
+                matchBoxId: matchBox ? matchBox.id : null,
+                score,
+                isClean: score >= MIRROR_GOOD_SCORE,
+                manual: false
+            };
+            mirrorAnalysisCache.set(box.id, analysis);
+            return analysis;
+        }
+
+        function invalidateMirrorCache() {
+            mirrorAnalysisCache.clear();
+        }
+
+        function setReviewBox(id) {
+            reviewBoxId = id;
+            renderBoxList();
+            draw();
+            if (id !== null) {
+                const box = boxes.find(b => b.id === id);
+                if (box) {
+                    const a = getMirrorAnalysis(box);
+                    const matchStr = a.manual && a.selfMirror
+                        ? `marked <span class="highlight">self-mirror</span>`
+                        : (a.manual
+                            ? `manually paired with <span class="highlight">#${a.matchBoxId}</span>`
+                            : (a.matchBoxId !== null
+                                ? `matches <span class="highlight">#${a.matchBoxId}</span> (Jaccard ${a.score.toFixed(2)})`
+                                : 'no existing match'));
+                    const missStr = a.missing > 0 ? `, ${a.missing} LEDs unsnapped` : '';
+                    setStatus(`Reviewing #${id}: ${matchStr}${missStr}. Click <b>↔</b> on another box to hard-assign a partner, <b>self</b> if this box is its own mirror, or use ← / → to walk.`);
+                }
+            }
+        }
+
+        function stepReview(delta) {
+            if (boxes.length === 0) return;
+            // Walk the same order the sidebar displays so arrow keys
+            // match the visual list (unmatched first, then pairs, etc.).
+            const sorted = sortBoxesByMirrorPairs(boxes);
+            let i = sorted.findIndex(b => b.id === reviewBoxId);
+            if (i < 0) i = (delta > 0 ? -1 : 0);
+            const next = sorted[((i + delta) % sorted.length + sorted.length) % sorted.length];
+            setReviewBox(next.id);
+            // Scroll the row into view in the sidebar
+            const el = document.querySelector(`.box-item[data-id="${next.id}"]`);
+            if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        // ---- Sidebar sort: unmatched first, then pairs adjacent ----
+        /**
+         * Return a flat array of boxes sorted so that:
+         *   1. Unmatched boxes (no partner at all) — ascending by id
+         *   2. Partial matches (0 < score < threshold) — ascending by id
+         *   3. Self-mirrors — ascending by id
+         *   4. Matched pairs — grouped A, B side-by-side, groups ordered by
+         *      the lower id in each pair.  Within a pair the left-side box
+         *      (lower centroid_x) comes first.
+         *
+         * The sort re-evaluates every render so newly added boxes slot in
+         * automatically.
+         */
+        function sortBoxesByMirrorPairs(list) {
+            // Compute analysis for every box.
+            const analysis = new Map();
+            for (const b of list) analysis.set(b.id, getMirrorAnalysis(b));
+
+            // Classify each box.
+            const unmatched  = []; // no matchBoxId at all
+            const partial    = []; // has matchBoxId but not clean
+            const selfMirror = []; // manual self (or auto on-midline clean)
+            const pairMap    = new Map(); // pairKey -> [boxA, boxB]
+
+            const claimed = new Set(); // prevent double-listing in pairs
+            for (const b of list) {
+                const a = analysis.get(b.id);
+                if (a.matchBoxId === null) {
+                    unmatched.push(b);
+                } else if (a.selfMirror || a.matchBoxId === b.id) {
+                    selfMirror.push(b);
+                } else if (!a.isClean) {
+                    partial.push(b);
+                } else {
+                    // Clean pair — group with partner.
+                    const lo = Math.min(b.id, a.matchBoxId);
+                    const hi = Math.max(b.id, a.matchBoxId);
+                    const key = lo + ':' + hi;
+                    if (!pairMap.has(key)) pairMap.set(key, []);
+                    pairMap.get(key).push(b);
+                    claimed.add(b.id);
+                }
+            }
+
+            // Sort each bucket by id.
+            const byId = (a, b) => a.id - b.id;
+            unmatched.sort(byId);
+            partial.sort(byId);
+            selfMirror.sort(byId);
+
+            // Build the paired section: groups ordered by lowest id, within
+            // each group the left-side box first (lower centroid_x).
+            const pairGroups = [...pairMap.entries()]
+                .sort((a, b) => {
+                    const aMin = parseInt(a[0]);
+                    const bMin = parseInt(b[0]);
+                    return aMin - bMin;
+                })
+                .flatMap(([, pair]) =>
+                    pair.sort((a, b) => a.centroid_x - b.centroid_x)
+                );
+
+            return [...unmatched, ...partial, ...selfMirror, ...pairGroups];
+        }
+
         // ---- Sidebar ----
         function renderBoxList() {
             const visibleCount = boxes.filter(b => !hiddenBoxIds.has(b.id)).length;
@@ -586,25 +977,75 @@
                 visibleCount === boxes.length
                     ? boxes.length
                     : `${visibleCount}/${boxes.length}`;
+            // Mirror status counters
+            let cleanCount = 0, badCount = 0;
+            for (const b of boxes) {
+                const a = getMirrorAnalysis(b);
+                if (a.matchBoxId === null) badCount++;
+                else if (a.isClean) cleanCount++;
+            }
+            document.getElementById('mirror-clean-count').textContent = cleanCount;
+            document.getElementById('mirror-bad-count').textContent = badCount;
             const list = document.getElementById('box-list');
             if (boxes.length === 0) {
                 list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-style:italic;padding:20px;">No boxes yet.</div>';
                 return;
             }
-            const sorted = [...boxes].sort((a, b) => a.id - b.id);
+            // Sort: unmatched first, then pairs side-by-side (ordered by
+            // the lower id of each pair), self-mirrors, then auto-clean.
+            const sorted = sortBoxesByMirrorPairs(boxes);
             list.innerHTML = sorted.map((b) => {
                 const stroke = BOX_STROKE_PALETTE[boxes.findIndex(x => x.id === b.id) % BOX_STROKE_PALETTE.length];
                 const dist = (b.centroid_x - midlineX).toFixed(0);
                 const side = b.centroid_x < midlineX - 5 ? 'L' : (b.centroid_x > midlineX + 5 ? 'R' : 'C');
                 const hidden = hiddenBoxIds.has(b.id);
+                const reviewing = b.id === reviewBoxId;
                 const eye = hidden ? '&#x25CB;' : '&#x25CF;'; // ○ hidden / ● visible
+                const a = getMirrorAnalysis(b);
+                let badgeClass, badgeText, badgeTitle;
+                if (a.manual && a.selfMirror) {
+                    badgeClass = 'manual'; badgeText = '●';
+                    badgeTitle = `Self-mirror (no partner needed)`;
+                } else if (a.manual) {
+                    badgeClass = 'manual'; badgeText = '↔';
+                    badgeTitle = `Manually paired with #${a.matchBoxId}`;
+                } else if (a.matchBoxId === null) {
+                    badgeClass = 'bad'; badgeText = '⚠'; badgeTitle = 'No mirror match';
+                } else if (a.isClean) {
+                    badgeClass = 'ok'; badgeText = '✓';
+                    badgeTitle = `Mirror = #${a.matchBoxId} (Jaccard ${a.score.toFixed(2)})`;
+                } else {
+                    badgeClass = 'warn'; badgeText = '~';
+                    badgeTitle = `Best mirror = #${a.matchBoxId} (Jaccard ${a.score.toFixed(2)}) — partial`;
+                }
+                const cls = ['box-item'];
+                if (hidden) cls.push('hidden');
+                if (reviewing) cls.push('review');
+                // Action buttons: while a review box is set, every *other* row shows
+                // a "↔" button that hard-pairs that box with the review target. The
+                // review row itself shows "self" (mark as self-symmetric) when no
+                // manual assignment exists, and "unpair" to clear one that does.
+                let actionBtnHtml = '';
+                if (reviewBoxId !== null) {
+                    if (b.id === reviewBoxId) {
+                        if (a.manual) {
+                            actionBtnHtml = `<button class="unpair-btn" title="Clear manual mirror for #${b.id}">unpair</button>`;
+                        } else {
+                            actionBtnHtml = `<button class="self-btn" title="Mark #${b.id} as its own mirror (no partner)">self</button>`;
+                        }
+                    } else {
+                        actionBtnHtml = `<button class="pair-btn" title="Pair #${reviewBoxId} ↔ #${b.id}">↔</button>`;
+                    }
+                }
                 return `
-                    <div class="box-item${hidden ? ' hidden' : ''}" data-id="${b.id}" style="border-left-color:${stroke}">
+                    <div class="${cls.join(' ')}" data-id="${b.id}" style="border-left-color:${stroke}">
                         <button class="vis-btn" title="${hidden ? 'Show' : 'Hide'}">${eye}</button>
                         <div class="info">
                             <div class="title">#${b.id} · ${b.led_count} LEDs · ${side}</div>
                             <div class="meta">centroid (${b.centroid_x.toFixed(0)}, ${b.centroid_y.toFixed(0)}) · Δmid ${dist}</div>
                         </div>
+                        <span class="badge ${badgeClass}" title="${badgeTitle}">${badgeText}</span>
+                        ${actionBtnHtml}
                         <button class="delete-btn" title="Delete">&times;</button>
                     </div>`;
             }).join('');
@@ -617,6 +1058,33 @@
                 el.querySelector('.vis-btn').addEventListener('click', e => {
                     e.stopPropagation();
                     toggleBoxVisibility(id);
+                });
+                const pairBtn = el.querySelector('.pair-btn');
+                if (pairBtn) {
+                    pairBtn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        if (reviewBoxId !== null && reviewBoxId !== id) {
+                            pairBoxes(reviewBoxId, id);
+                        }
+                    });
+                }
+                const unpairBtn = el.querySelector('.unpair-btn');
+                if (unpairBtn) {
+                    unpairBtn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        unpairBox(id);
+                    });
+                }
+                const selfBtn = el.querySelector('.self-btn');
+                if (selfBtn) {
+                    selfBtn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        markSelfMirror(id);
+                    });
+                }
+                // Clicking the row body sets / clears the mirror review target
+                el.addEventListener('click', () => {
+                    setReviewBox(reviewBoxId === id ? null : id);
                 });
                 el.addEventListener('mouseenter', () => {
                     highlightBoxId = id;
@@ -653,13 +1121,12 @@
         }
 
         function updatePendingDisplay() {
-            document.getElementById('pending-count').textContent = pendingPerimeter.length;
             const el = document.getElementById('pending-box-info');
             if (pendingPerimeter.length === 0) {
                 el.style.display = 'none';
             } else {
                 el.style.display = 'block';
-                el.innerHTML = `<b>Pending:</b> ${pendingPerimeter.join(' → ')}`;
+                el.innerHTML = `<b>Pending (${pendingPerimeter.length} pts):</b> ${pendingPerimeter.join(' → ')}`;
             }
         }
 
@@ -684,12 +1151,18 @@
         });
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') cancelPending();
+            if (e.target.matches('input,textarea')) return;
+            if (e.key === 'Escape') {
+                if (reviewBoxId !== null) setReviewBox(null);
+                else cancelPending();
+            }
             if (e.key === 'Enter') { e.preventDefault(); closePending(); }
-            if (e.key === 'Backspace' && !e.target.matches('input,textarea')) {
+            if (e.key === 'Backspace') {
                 e.preventDefault();
                 undoPendingPoint();
             }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); stepReview(+1); }
+            if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); stepReview(-1); }
         });
 
         document.getElementById('mode-build').addEventListener('click', () => setMode('build'));
@@ -710,6 +1183,26 @@
         });
         document.getElementById('hide-all-btn').addEventListener('click', () => setAllVisibility(true));
         document.getElementById('show-all-btn').addEventListener('click', () => setAllVisibility(false));
+        document.getElementById('clear-review-btn').addEventListener('click', () => setReviewBox(null));
+        document.getElementById('next-unmatched-btn').addEventListener('click', () => {
+            // Walk forward starting from the current review box (or 0) and stop on the first
+            // box whose mirror analysis says "no clean match".
+            const sorted = sortBoxesByMirrorPairs(boxes);
+            if (sorted.length === 0) return;
+            let startIdx = sorted.findIndex(b => b.id === reviewBoxId);
+            if (startIdx < 0) startIdx = -1;
+            for (let i = 1; i <= sorted.length; i++) {
+                const cand = sorted[(startIdx + i) % sorted.length];
+                const a = getMirrorAnalysis(cand);
+                if (!a.isClean) {
+                    setReviewBox(cand.id);
+                    const el = document.querySelector(`.box-item[data-id="${cand.id}"]`);
+                    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    return;
+                }
+            }
+            setStatus('All boxes have a clean mirror match. ');
+        });
 
         window.addEventListener('resize', resizeCanvas);
 

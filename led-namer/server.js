@@ -247,7 +247,8 @@ async function enrichBox(box) {
     perimeter: box.perimeter,
     centroid_x: c.x,
     centroid_y: c.y,
-    led_count: box.perimeter.length
+    led_count: box.perimeter.length,
+    mirror_box_id: typeof box.mirror_box_id === 'number' ? box.mirror_box_id : null
   };
 }
 
@@ -280,7 +281,8 @@ app.put('/api/boxes', async (req, res) => {
         perimeter: b.perimeter,
         centroid_x: c.x,
         centroid_y: c.y,
-        led_count: b.perimeter.length
+        led_count: b.perimeter.length,
+        mirror_box_id: typeof b.mirror_box_id === 'number' ? b.mirror_box_id : null
       };
     });
     const doc = {
@@ -330,6 +332,67 @@ app.delete('/api/boxes/:id', async (req, res) => {
   } catch (err) {
     console.error('Error deleting box:', err);
     res.status(500).json({ error: 'Failed to delete box' });
+  }
+});
+
+// --- Per-LED Mirror Pairings API ---
+//
+// Schema (led-mirrors.json):
+// {
+//   "description": "...",
+//   "midline_x": 230.0,
+//   "pairs": [[58, 267], [45, 45], ...]    // [a, b] with a<=b; self-mirror: [x, x]
+// }
+
+const MIRRORS_FILE = path.join(__dirname, 'led-mirrors.json');
+
+async function readMirrorsFile() {
+  try {
+    await fs.access(MIRRORS_FILE);
+    const data = await fs.readFile(MIRRORS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    return { description: 'Per-LED mirror pairings around the vertical midline', midline_x: 230.0, pairs: [] };
+  }
+}
+
+async function writeMirrorsFile(doc) {
+  await fs.writeFile(MIRRORS_FILE, JSON.stringify(doc, null, 2));
+}
+
+app.get('/api/led-mirrors', async (req, res) => {
+  try {
+    const doc = await readMirrorsFile();
+    res.json(doc);
+  } catch (err) {
+    console.error('Error reading led-mirrors:', err);
+    res.status(500).json({ error: 'Failed to read led-mirrors' });
+  }
+});
+
+app.put('/api/led-mirrors', async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!Array.isArray(body.pairs)) {
+      return res.status(400).json({ error: 'Body must contain a pairs array' });
+    }
+    // Normalize: ensure [min, max] in each pair
+    const normalized = body.pairs.map(p => {
+      if (!Array.isArray(p) || p.length !== 2) throw new Error('Each pair must be [a, b]');
+      const a = p[0], b = p[1];
+      if (a === b) return [a, b]; // self-mirror
+      return [Math.min(a, b), Math.max(a, b)];
+    });
+    const doc = {
+      description: body.description || 'Per-LED mirror pairings around the vertical midline',
+      midline_x: typeof body.midline_x === 'number' ? body.midline_x : 230.0,
+      pairs: normalized
+    };
+    await writeMirrorsFile(doc);
+    res.json(doc);
+  } catch (err) {
+    console.error('Error writing led-mirrors:', err);
+    res.status(500).json({ error: 'Failed to write led-mirrors: ' + err.message });
   }
 });
 
