@@ -64,23 +64,17 @@ public class BoxOutlineTraceEffect implements Effect {
 
         if (pairs.isEmpty()) return new HashMap<>();
 
-        // Only render one pair at a time; crossfade at boundaries.
+        // Render all pairs simultaneously so the fox is always fully symmetric
         int totalPairs = pairs.size();
-        double slot = timeSeconds / pairDurationSec;
-        int activeIdx = ((int) slot) % totalPairs;
-        double progress = slot - Math.floor(slot); // 0..1 within this pair's slot
-        // Fade envelope: ramp up first 10%, sustain, ramp down last 10%
-        double fade = 1.0;
-        if (progress < 0.1) fade = progress / 0.1;
-        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
+        for (int pi = 0; pi < totalPairs; pi++) {
+            LEDBoxTopology.Pair p = pairs.get(pi);
+            float hue = totalPairs <= 1 ? 0.6f : (float) pi / (float) totalPairs;
+            Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
 
-        LEDBoxTopology.Pair p = pairs.get(activeIdx);
-        float hue = totalPairs <= 1 ? 0.6f : (float) activeIdx / (float) totalPairs;
-        Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
-
-        renderBox(p.left, baseColor, +1, fade, r, g, b);
-        if (!p.selfSymmetric) {
-            renderBox(p.right, baseColor, -1, fade, r, g, b);
+            renderBox(p.left, baseColor, +1, 1.0, r, g, b);
+            if (!p.selfSymmetric) {
+                renderBox(p.right, baseColor, -1, 1.0, r, g, b);
+            }
         }
 
         Map<Integer, Color> pixels = new HashMap<>();
