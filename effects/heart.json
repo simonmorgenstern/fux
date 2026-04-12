@@ -1,0 +1,16 @@
+{
+  "name": "Heart",
+  "description": "A 46-LED heart outline pulses with a double-beat heartbeat rhythm. Two bright highlights circulate around the outline while the whole heart throbs red",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "heart",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "rotation_period_sec": 3.0,
+    "beat_period_sec": 1.2,
+    "base_glow": 0.06,
+    "brightness": 1.0,
+    "perimeter": [184, 213, 212, 211, 210, 209, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 246, 245, 244, 178, 177, 176, 175, 171, 172, 173, 174, 151, 152, 153, 154, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 141, 142, 143, 144, 145]
+  }
+}
