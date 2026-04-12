@@ -51,7 +51,11 @@ public class EffectsHttpHandler implements HttpHandler {
         "box_bloom",
         "box_outline_trace",
         "box_breathe_grid",
-        "box_ripple"
+        "box_ripple",
+        "mirror_wave",
+        "symmetric_sparkle",
+        "mirror_cascade",
+        "mirror_breathe"
     };
     
     @Override

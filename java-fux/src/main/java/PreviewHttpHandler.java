@@ -275,10 +275,14 @@ public class PreviewHttpHandler implements HttpHandler {
             case "box_outline_trace": return new BoxOutlineTraceEffect();
             case "box_breathe_grid": return new BoxBreatheGridEffect();
             case "box_ripple": return new BoxRippleEffect();
+            case "mirror_wave": return new MirrorWaveEffect();
+            case "symmetric_sparkle": return new SymmetricSparkleEffect();
+            case "mirror_cascade": return new MirrorCascadeEffect();
+            case "mirror_breathe": return new MirrorBreatheEffect();
             default: return null;
         }
     }
-    
+
     /**
      * Send error response
      */
