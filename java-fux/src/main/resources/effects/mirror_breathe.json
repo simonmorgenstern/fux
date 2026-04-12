@@ -1,0 +1,18 @@
+{
+  "name": "Mirror Breathe",
+  "description": "All LEDs breathe in concentric rings from the fox's spine outward. Mirror pairs share phase and color, creating a symmetric pulsing glow",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "mirror_breathe",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "breath_period_sec": 3.5,
+    "phase_spread": 1.2,
+    "min_brightness": 0.05,
+    "max_brightness": 1.0,
+    "center_hue": 0.55,
+    "edge_hue": 0.85,
+    "saturation": 0.8
+  }
+}

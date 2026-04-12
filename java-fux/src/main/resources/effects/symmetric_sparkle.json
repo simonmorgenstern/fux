@@ -1,0 +1,16 @@
+{
+  "name": "Symmetric Sparkle",
+  "description": "Random sparkles that always appear in mirrored pairs. Both sides of the fox twinkle in balanced symmetry; midline LEDs sparkle solo",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "symmetric_sparkle",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "spawn_rate": 8.0,
+    "sparkle_duration_sec": 0.6,
+    "max_active": 40,
+    "brightness": 1.0,
+    "saturation": 0.8
+  }
+}

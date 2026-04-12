@@ -57,6 +57,10 @@ public class EffectEngine implements Runnable {
         add("box_outline_trace");
         add("box_breathe_grid");
         add("box_ripple");
+        add("mirror_wave");
+        add("symmetric_sparkle");
+        add("mirror_cascade");
+        add("mirror_breathe");
     }};
     
     // Callback for state updates
@@ -319,6 +323,18 @@ public class EffectEngine implements Runnable {
                     break;
                 case "box_ripple":
                     currentEffect = new BoxRippleEffect();
+                    break;
+                case "mirror_wave":
+                    currentEffect = new MirrorWaveEffect();
+                    break;
+                case "symmetric_sparkle":
+                    currentEffect = new SymmetricSparkleEffect();
+                    break;
+                case "mirror_cascade":
+                    currentEffect = new MirrorCascadeEffect();
+                    break;
+                case "mirror_breathe":
+                    currentEffect = new MirrorBreatheEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);
