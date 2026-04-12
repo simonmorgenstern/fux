@@ -55,7 +55,8 @@ public class EffectsHttpHandler implements HttpHandler {
         "mirror_wave",
         "symmetric_sparkle",
         "mirror_cascade",
-        "mirror_breathe"
+        "mirror_breathe",
+        "mirror_snake"
     };
     
     @Override

@@ -211,6 +211,7 @@ public class EffectRenderer implements Runnable {
             case "symmetric_sparkle": return new SymmetricSparkleEffect();
             case "mirror_cascade": return new MirrorCascadeEffect();
             case "mirror_breathe": return new MirrorBreatheEffect();
+            case "mirror_snake": return new MirrorSnakeEffect();
             default: return null;
         }
     }

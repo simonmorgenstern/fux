@@ -61,6 +61,7 @@ public class EffectEngine implements Runnable {
         add("symmetric_sparkle");
         add("mirror_cascade");
         add("mirror_breathe");
+        add("mirror_snake");
     }};
     
     // Callback for state updates
@@ -335,6 +336,9 @@ public class EffectEngine implements Runnable {
                     break;
                 case "mirror_breathe":
                     currentEffect = new MirrorBreatheEffect();
+                    break;
+                case "mirror_snake":
+                    currentEffect = new MirrorSnakeEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);
