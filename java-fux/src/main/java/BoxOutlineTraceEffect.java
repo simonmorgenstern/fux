@@ -71,9 +71,11 @@ public class BoxOutlineTraceEffect implements Effect {
             float hue = totalPairs <= 1 ? 0.6f : (float) pi / (float) totalPairs;
             Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
 
-            renderBox(p.left, baseColor, +1, 1.0, r, g, b);
+            // Offset each pair so the comets are staggered around their perimeters
+            int pairOffset = totalPairs <= 1 ? 0 : (p.left.perimeter.size() * pi) / totalPairs;
+            renderBox(p.left, baseColor, +1, 1.0, pairOffset, r, g, b);
             if (!p.selfSymmetric) {
-                renderBox(p.right, baseColor, -1, 1.0, r, g, b);
+                renderBox(p.right, baseColor, -1, 1.0, pairOffset, r, g, b);
             }
         }
 
@@ -91,10 +93,10 @@ public class BoxOutlineTraceEffect implements Effect {
     }
 
     private void renderBox(LEDBoxTopology.Box box, Color color, int direction, double fade,
-                           double[] r, double[] g, double[] b) {
+                           int pairOffset, double[] r, double[] g, double[] b) {
         int len = box.perimeter.size();
         if (len == 0) return;
-        int head = (int) Math.floor(headPosition);
+        int head = (int) Math.floor(headPosition) + pairOffset;
         for (int t = 0; t < trailLength; t++) {
             int offset = head - t;
             int idx;
