@@ -58,14 +58,14 @@ public class MirrorSnakeEffect implements Effect {
 
         this.topology = new LEDBoxTopology();
         this.topology.load();
+        this.pairs = topology.getPairs();
 
         this.mirrorMap = new LEDMirrorMap();
         this.mirrorMap.load();
 
-        this.pairs = topology.getPairs();
-
         System.out.println("MirrorSnakeEffect initialized:");
-        System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
+        System.out.println("  Pairs: " + (pairs != null ? pairs.size() : 0) + " (cycling one at a time)");
+        System.out.println("  Mirror map loaded: " + mirrorMap.isLoaded());
         System.out.println("  Speed: " + speedLedsPerSec + " leds/sec, trail: " + trailLength);
     }
 
@@ -78,7 +78,7 @@ public class MirrorSnakeEffect implements Effect {
         double[] g = new double[n];
         double[] b = new double[n];
 
-        if (pairs.isEmpty()) return new HashMap<>();
+        if (pairs == null || pairs.isEmpty()) return new HashMap<>();
 
         // Cycle one pair at a time with crossfade.
         int totalPairs = pairs.size();
