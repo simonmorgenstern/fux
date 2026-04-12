@@ -16,21 +16,22 @@ public class FireworkEffect implements Effect {
     // Coordinate bounds (computed once)
     private double minY, maxY, minX, maxX;
 
-    // Vivid color palettes — each explosion picks one palette
-    private static final Color[][] PALETTES = {
-        // warm: red, orange, gold, yellow
-        { new Color(255, 30, 30), new Color(255, 120, 0), new Color(255, 200, 0), new Color(255, 255, 100) },
-        // cool: cyan, blue, purple, white
-        { new Color(0, 220, 255), new Color(60, 60, 255), new Color(180, 50, 255), new Color(220, 220, 255) },
-        // green-teal: green, teal, lime, white
-        { new Color(0, 255, 80), new Color(0, 255, 200), new Color(180, 255, 0), new Color(200, 255, 200) },
-        // pink-magenta: pink, magenta, hot pink, white
-        { new Color(255, 80, 150), new Color(255, 0, 200), new Color(255, 50, 100), new Color(255, 200, 255) },
-        // gold-white: gold, amber, white, yellow
-        { new Color(255, 200, 0), new Color(255, 160, 30), new Color(255, 255, 255), new Color(255, 240, 100) },
-        // rainbow burst
-        { new Color(255, 0, 50), new Color(255, 180, 0), new Color(0, 255, 100), new Color(80, 80, 255), new Color(255, 0, 255) },
+    // Each entry: dominant color + accent color. 80% particles use dominant, 20% accent.
+    private static final Color[][] THEMES = {
+        { new Color(255, 30, 30),   new Color(255, 200, 50) },   // red + gold
+        { new Color(0, 200, 255),   new Color(255, 255, 255) },  // cyan + white
+        { new Color(255, 0, 200),   new Color(255, 150, 255) },  // magenta + pink
+        { new Color(0, 255, 80),    new Color(200, 255, 100) },  // green + lime
+        { new Color(255, 200, 0),   new Color(255, 255, 200) },  // gold + cream
+        { new Color(80, 60, 255),   new Color(180, 150, 255) },  // blue + lavender
+        { new Color(255, 100, 0),   new Color(255, 220, 50) },   // orange + yellow
+        { new Color(255, 255, 255), new Color(200, 230, 255) },  // white + ice
+        { new Color(0, 255, 200),   new Color(100, 255, 255) },  // teal + aqua
+        { new Color(255, 50, 100),  new Color(255, 180, 200) },  // cherry + blush
+        { new Color(180, 50, 255),  new Color(255, 100, 255) },  // purple + fuchsia
+        { new Color(255, 60, 0),    new Color(255, 30, 30) },    // fire + red
     };
+    private int lastThemeIndex = -1;
 
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
@@ -79,14 +80,19 @@ public class FireworkEffect implements Effect {
         targetX = Math.max(minX + rangeX * 0.1, Math.min(maxX - rangeX * 0.1, targetX));
         double targetY = minY + rangeY * (0.1 + random.nextDouble() * 0.3);
 
-        // Pick a palette for this rocket
-        Color[] palette = PALETTES[random.nextInt(PALETTES.length)];
+        // Pick a theme, avoiding repeats
+        int themeIdx;
+        do {
+            themeIdx = random.nextInt(THEMES.length);
+        } while (themeIdx == lastThemeIndex && THEMES.length > 1);
+        lastThemeIndex = themeIdx;
+        Color[] theme = THEMES[themeIdx];
 
         // Fast rocket: covers the distance in ~8-12 frames
         double dist = startY - targetY;
         double speed = dist / (8.0 + random.nextDouble() * 4.0);
 
-        rockets.add(new Rocket(startX, startY, targetX, targetY, speed, palette));
+        rockets.add(new Rocket(startX, startY, targetX, targetY, speed, theme));
     }
 
     @Override
@@ -128,13 +134,9 @@ public class FireworkEffect implements Effect {
         }
         particles.removeAll(deadParticles);
 
-        // Spawn new rockets
-        if (rockets.isEmpty() && random.nextDouble() < spawnChance) {
+        // Spawn new rocket only when all particles have mostly faded
+        if (rockets.isEmpty() && particles.size() < 20 && random.nextDouble() < spawnChance) {
             spawnRocket();
-            // Occasionally launch two at once
-            if (random.nextDouble() < 0.3) {
-                spawnRocket();
-            }
         }
 
         return pixels;
@@ -142,25 +144,24 @@ public class FireworkEffect implements Effect {
 
     private void explode(Rocket rocket) {
         int count = minParticles + random.nextInt(maxParticles - minParticles + 1);
-        Color[] palette = rocket.palette;
+        Color dominant = rocket.palette[0];
+        Color accent = rocket.palette[1];
         double rangeY = maxY - minY;
-        // Particle speed scales with the fox size so the burst covers the top half
         double baseSpeed = rangeY * 0.04;
 
         for (int i = 0; i < count; i++) {
             double angle = random.nextDouble() * 2 * Math.PI;
-            // Use gaussian-ish distribution: most particles at medium speed, some fast
             double speedMult = 0.3 + random.nextDouble() * 0.7 + (random.nextDouble() < 0.2 ? random.nextDouble() * 0.5 : 0);
             double speed = baseSpeed * speedMult;
 
             double vx = Math.cos(angle) * speed;
             double vy = Math.sin(angle) * speed;
 
-            // Pick a color from the palette with slight variation
-            Color base = palette[random.nextInt(palette.length)];
-            int r = clamp(base.getRed() + random.nextInt(40) - 20);
-            int g = clamp(base.getGreen() + random.nextInt(40) - 20);
-            int b = clamp(base.getBlue() + random.nextInt(40) - 20);
+            // 80% dominant color, 20% accent — keeps each burst cohesive
+            Color base = random.nextDouble() < 0.8 ? dominant : accent;
+            int r = clamp(base.getRed() + random.nextInt(30) - 15);
+            int g = clamp(base.getGreen() + random.nextInt(30) - 15);
+            int b = clamp(base.getBlue() + random.nextInt(30) - 15);
 
             // Vary decay so particles die at different times (sparkle trail effect)
             double decay = 0.015 + random.nextDouble() * 0.02;
