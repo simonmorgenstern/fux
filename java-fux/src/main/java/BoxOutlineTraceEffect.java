@@ -64,19 +64,23 @@ public class BoxOutlineTraceEffect implements Effect {
 
         if (pairs.isEmpty()) return new HashMap<>();
 
-        // Render all pairs simultaneously so the fox is always fully symmetric
+        // Cycle one pair at a time with crossfade
         int totalPairs = pairs.size();
-        for (int pi = 0; pi < totalPairs; pi++) {
-            LEDBoxTopology.Pair p = pairs.get(pi);
-            float hue = totalPairs <= 1 ? 0.6f : (float) pi / (float) totalPairs;
-            Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
+        double slot = timeSeconds / pairDurationSec;
+        int activeIdx = ((int) slot) % totalPairs;
+        double progress = slot - Math.floor(slot);
+        double fade = 1.0;
+        if (progress < 0.1) fade = progress / 0.1;
+        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
 
-            // Offset each pair so the comets are staggered around their perimeters
-            int pairOffset = totalPairs <= 1 ? 0 : (p.left.perimeter.size() * pi) / totalPairs;
-            renderBox(p.left, baseColor, +1, 1.0, pairOffset, r, g, b);
-            if (!p.selfSymmetric) {
-                renderBox(p.right, baseColor, -1, 1.0, pairOffset, r, g, b);
-            }
+        LEDBoxTopology.Pair p = pairs.get(activeIdx);
+        float hue = totalPairs <= 1 ? 0.6f : (float) activeIdx / (float) totalPairs;
+        Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
+
+        // Both left and right box of the pair trace simultaneously
+        renderBox(p.left, baseColor, +1, fade, r, g, b);
+        if (!p.selfSymmetric) {
+            renderBox(p.right, baseColor, +1, fade, r, g, b);
         }
 
         Map<Integer, Color> pixels = new HashMap<>();
@@ -93,10 +97,10 @@ public class BoxOutlineTraceEffect implements Effect {
     }
 
     private void renderBox(LEDBoxTopology.Box box, Color color, int direction, double fade,
-                           int pairOffset, double[] r, double[] g, double[] b) {
+                           double[] r, double[] g, double[] b) {
         int len = box.perimeter.size();
         if (len == 0) return;
-        int head = (int) Math.floor(headPosition) + pairOffset;
+        int head = (int) Math.floor(headPosition);
         for (int t = 0; t < trailLength; t++) {
             int offset = head - t;
             int idx;
