@@ -1,23 +1,20 @@
 import com.google.gson.JsonObject;
 
 import java.awt.Color;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Box Outline Trace — a comet runs around the perimeter of every box at the
- * same time, leaving a fading trail. Mirror pairs run in opposite directions
- * around their perimeters so the fox stays horizontally symmetric.
- *
- * Each box's hue is a function of its symmetric group index, so paired boxes
- * always share a color, and the inside-to-outside layering is visually
- * coherent.
+ * Box Outline Trace — a comet runs around the perimeter of one box pair
+ * at a time, leaving a fading trail. For each lit LED, its exact mirror
+ * partner (from led-mirrors.json) is also lit, guaranteeing perfect
+ * horizontal symmetry.
  */
 public class BoxOutlineTraceEffect implements Effect {
     private PixelCoordinates coords;
     private LEDBoxTopology topology;
+    private LEDMirrorMap mirrorMap;
     private int fps;
     private double speedLedsPerSec;
     private int trailLength;
@@ -48,8 +45,12 @@ public class BoxOutlineTraceEffect implements Effect {
         this.topology.load();
         this.pairs = topology.getPairs();
 
+        this.mirrorMap = new LEDMirrorMap();
+        this.mirrorMap.load();
+
         System.out.println("BoxOutlineTraceEffect initialized:");
         System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
+        System.out.println("  Mirror map loaded: " + mirrorMap.isLoaded());
         System.out.println("  Speed: " + speedLedsPerSec + " leds/sec, trail: " + trailLength);
     }
 
@@ -77,11 +78,8 @@ public class BoxOutlineTraceEffect implements Effect {
         float hue = totalPairs <= 1 ? 0.6f : (float) activeIdx / (float) totalPairs;
         Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
 
-        // Both left and right box of the pair trace simultaneously
-        renderBox(p.left, baseColor, +1, fade, r, g, b);
-        if (!p.selfSymmetric) {
-            renderBox(p.right, baseColor, +1, fade, r, g, b);
-        }
+        // Trace only the left box; mirror each LED to get the right side
+        renderBoxWithMirror(p.left, baseColor, fade, r, g, b);
 
         Map<Integer, Color> pixels = new HashMap<>();
         for (int i = 0; i < n; i++) {
@@ -96,26 +94,31 @@ public class BoxOutlineTraceEffect implements Effect {
         return pixels;
     }
 
-    private void renderBox(LEDBoxTopology.Box box, Color color, int direction, double fade,
-                           double[] r, double[] g, double[] b) {
+    private void renderBoxWithMirror(LEDBoxTopology.Box box, Color color, double fade,
+                                     double[] r, double[] g, double[] b) {
         int len = box.perimeter.size();
         if (len == 0) return;
         int head = (int) Math.floor(headPosition);
         for (int t = 0; t < trailLength; t++) {
             int offset = head - t;
-            int idx;
-            if (direction > 0) {
-                idx = ((offset % len) + len) % len;
-            } else {
-                idx = ((-offset % len) + len) % len;
-            }
+            int idx = ((offset % len) + len) % len;
             int led = box.perimeter.get(idx);
             double falloff = 1.0 - (double) t / (double) trailLength;
             falloff = falloff * falloff;
             double k = falloff * brightness * fade;
+
+            // Light the LED itself
             r[led] += color.getRed() * k;
             g[led] += color.getGreen() * k;
             b[led] += color.getBlue() * k;
+
+            // Light its exact mirror partner
+            int mirror = mirrorMap.getMirror(led);
+            if (mirror != led) {
+                r[mirror] += color.getRed() * k;
+                g[mirror] += color.getGreen() * k;
+                b[mirror] += color.getBlue() * k;
+            }
         }
     }
 
