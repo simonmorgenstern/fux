@@ -65,6 +65,7 @@ public class EffectEngine implements Runnable {
         add("flood_fill");
         add("center_pulse");
         add("center_heartbeat");
+        add("star");
     }};
     
     // Callback for state updates
@@ -351,6 +352,9 @@ public class EffectEngine implements Runnable {
                     break;
                 case "center_heartbeat":
                     currentEffect = new CenterHeartbeatEffect();
+                    break;
+                case "star":
+                    currentEffect = new StarEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);

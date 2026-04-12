@@ -283,6 +283,7 @@ public class PreviewHttpHandler implements HttpHandler {
             case "flood_fill": return new FloodFillEffect();
             case "center_pulse": return new CenterPulseEffect();
             case "center_heartbeat": return new CenterHeartbeatEffect();
+            case "star": return new StarEffect();
             default: return null;
         }
     }

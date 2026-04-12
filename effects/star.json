@@ -1,0 +1,18 @@
+{
+  "name": "Star",
+  "description": "A golden star twinkles and rotates on box #135 — tips auto-detected, beam sweeps around with sequential tip flashes",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "star",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "box_id": 135,
+    "rotation_period_sec": 4.0,
+    "twinkle_period_sec": 0.8,
+    "base_glow": 0.08,
+    "brightness": 1.0,
+    "hue": 0.12,
+    "saturation": 0.8
+  }
+}
