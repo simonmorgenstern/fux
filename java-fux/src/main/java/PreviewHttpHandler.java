@@ -280,6 +280,9 @@ public class PreviewHttpHandler implements HttpHandler {
             case "mirror_cascade": return new MirrorCascadeEffect();
             case "mirror_breathe": return new MirrorBreatheEffect();
             case "mirror_snake": return new MirrorSnakeEffect();
+            case "flood_fill": return new FloodFillEffect();
+            case "center_pulse": return new CenterPulseEffect();
+            case "center_heartbeat": return new CenterHeartbeatEffect();
             default: return null;
         }
     }

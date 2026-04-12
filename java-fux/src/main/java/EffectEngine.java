@@ -62,6 +62,9 @@ public class EffectEngine implements Runnable {
         add("mirror_cascade");
         add("mirror_breathe");
         add("mirror_snake");
+        add("flood_fill");
+        add("center_pulse");
+        add("center_heartbeat");
     }};
     
     // Callback for state updates
@@ -339,6 +342,15 @@ public class EffectEngine implements Runnable {
                     break;
                 case "mirror_snake":
                     currentEffect = new MirrorSnakeEffect();
+                    break;
+                case "flood_fill":
+                    currentEffect = new FloodFillEffect();
+                    break;
+                case "center_pulse":
+                    currentEffect = new CenterPulseEffect();
+                    break;
+                case "center_heartbeat":
+                    currentEffect = new CenterHeartbeatEffect();
                     break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);
