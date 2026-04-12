@@ -1,6 +1,6 @@
 {
   "name": "Box Breathe Grid",
-  "description": "Every box breathes in unison; hue varies by horizontal distance from the centerline so mirror pairs always match",
+  "description": "One box pair at a time breathes; hue varies by horizontal distance from the centerline so mirror pairs always match",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "box_breathe_grid",
@@ -13,6 +13,7 @@
     "center_hue": 0.08,
     "edge_hue": 0.58,
     "saturation": 0.9,
-    "vertical_phase_sec": 0.6
+    "vertical_phase_sec": 0.6,
+    "pair_duration_sec": 5.0
   }
 }

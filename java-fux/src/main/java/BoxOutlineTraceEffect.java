@@ -23,9 +23,10 @@ public class BoxOutlineTraceEffect implements Effect {
     private int trailLength;
     private double brightness;
     private double saturation;
+    private double pairDurationSec;
 
-    private double headPosition; // floating LED-step counter shared by all boxes
-    private List<BoxState> states;
+    private double headPosition;
+    private List<LEDBoxTopology.Pair> pairs;
 
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
@@ -39,27 +40,16 @@ public class BoxOutlineTraceEffect implements Effect {
             ? params.get("brightness").getAsDouble() : 1.0;
         this.saturation = params.has("saturation")
             ? params.get("saturation").getAsDouble() : 0.85;
+        this.pairDurationSec = params.has("pair_duration_sec")
+            ? params.get("pair_duration_sec").getAsDouble() : 6.0;
         this.headPosition = 0;
 
         this.topology = new LEDBoxTopology();
         this.topology.load();
-
-        this.states = new ArrayList<>();
-        List<LEDBoxTopology.Pair> groups = topology.getPairs();
-        for (int i = 0; i < groups.size(); i++) {
-            LEDBoxTopology.Pair p = groups.get(i);
-            // Hue spans 0..1 across the symmetric groups so paired boxes match.
-            float hue = groups.size() <= 1 ? 0.6f : (float) i / (float) groups.size();
-            Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
-            // Left box runs forward, right box runs backward (opposite direction).
-            states.add(new BoxState(p.left, baseColor, +1));
-            if (!p.selfSymmetric) {
-                states.add(new BoxState(p.right, baseColor, -1));
-            }
-        }
+        this.pairs = topology.getPairs();
 
         System.out.println("BoxOutlineTraceEffect initialized:");
-        System.out.println("  Active boxes: " + states.size());
+        System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
         System.out.println("  Speed: " + speedLedsPerSec + " leds/sec, trail: " + trailLength);
     }
 
@@ -72,28 +62,25 @@ public class BoxOutlineTraceEffect implements Effect {
         double[] g = new double[n];
         double[] b = new double[n];
 
-        for (BoxState st : states) {
-            int len = st.box.perimeter.size();
-            if (len == 0) continue;
-            int head = (int) Math.floor(headPosition);
-            // direction-aware index along the perimeter
-            for (int t = 0; t < trailLength; t++) {
-                int offset = head - t;
-                int idx;
-                if (st.direction > 0) {
-                    idx = ((offset % len) + len) % len;
-                } else {
-                    idx = ((-offset % len) + len) % len;
-                }
-                int led = st.box.perimeter.get(idx);
-                // Brightness falloff along the trail
-                double falloff = 1.0 - (double) t / (double) trailLength;
-                falloff = falloff * falloff; // soften
-                double k = falloff * brightness;
-                r[led] += st.color.getRed() * k;
-                g[led] += st.color.getGreen() * k;
-                b[led] += st.color.getBlue() * k;
-            }
+        if (pairs.isEmpty()) return new HashMap<>();
+
+        // Only render one pair at a time; crossfade at boundaries.
+        int totalPairs = pairs.size();
+        double slot = timeSeconds / pairDurationSec;
+        int activeIdx = ((int) slot) % totalPairs;
+        double progress = slot - Math.floor(slot); // 0..1 within this pair's slot
+        // Fade envelope: ramp up first 10%, sustain, ramp down last 10%
+        double fade = 1.0;
+        if (progress < 0.1) fade = progress / 0.1;
+        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
+
+        LEDBoxTopology.Pair p = pairs.get(activeIdx);
+        float hue = totalPairs <= 1 ? 0.6f : (float) activeIdx / (float) totalPairs;
+        Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
+
+        renderBox(p.left, baseColor, +1, fade, r, g, b);
+        if (!p.selfSymmetric) {
+            renderBox(p.right, baseColor, -1, fade, r, g, b);
         }
 
         Map<Integer, Color> pixels = new HashMap<>();
@@ -109,22 +96,32 @@ public class BoxOutlineTraceEffect implements Effect {
         return pixels;
     }
 
-    @Override
-    public void dispose() {
-        if (states != null) states.clear();
+    private void renderBox(LEDBoxTopology.Box box, Color color, int direction, double fade,
+                           double[] r, double[] g, double[] b) {
+        int len = box.perimeter.size();
+        if (len == 0) return;
+        int head = (int) Math.floor(headPosition);
+        for (int t = 0; t < trailLength; t++) {
+            int offset = head - t;
+            int idx;
+            if (direction > 0) {
+                idx = ((offset % len) + len) % len;
+            } else {
+                idx = ((-offset % len) + len) % len;
+            }
+            int led = box.perimeter.get(idx);
+            double falloff = 1.0 - (double) t / (double) trailLength;
+            falloff = falloff * falloff;
+            double k = falloff * brightness * fade;
+            r[led] += color.getRed() * k;
+            g[led] += color.getGreen() * k;
+            b[led] += color.getBlue() * k;
+        }
     }
+
+    @Override
+    public void dispose() {}
 
     @Override public String getName() { return "Box Outline Trace"; }
     @Override public int getFPS() { return fps; }
-
-    private static class BoxState {
-        final LEDBoxTopology.Box box;
-        final Color color;
-        final int direction; // +1 forward, -1 reverse around the perimeter
-        BoxState(LEDBoxTopology.Box box, Color color, int direction) {
-            this.box = box;
-            this.color = color;
-            this.direction = direction;
-        }
-    }
 }

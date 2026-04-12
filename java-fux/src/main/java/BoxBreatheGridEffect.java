@@ -23,14 +23,16 @@ public class BoxBreatheGridEffect implements Effect {
     private double breathPeriodSec;
     private double minBrightness;
     private double maxBrightness;
-    private double centerHue;   // hue at the midline (0..1)
-    private double edgeHue;     // hue at the outermost box (0..1)
+    private double centerHue;
+    private double edgeHue;
     private double saturation;
-    private double verticalPhaseSec; // how much vertical position offsets the breath
+    private double verticalPhaseSec;
+    private double pairDurationSec;
 
     private double maxDistFromMidline;
     private double maxYRange;
     private double minY;
+    private List<LEDBoxTopology.Pair> pairs;
 
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
@@ -43,19 +45,20 @@ public class BoxBreatheGridEffect implements Effect {
         this.maxBrightness = params.has("max_brightness")
             ? params.get("max_brightness").getAsDouble() : 1.0;
         this.centerHue = params.has("center_hue")
-            ? params.get("center_hue").getAsDouble() : 0.08; // warm orange
+            ? params.get("center_hue").getAsDouble() : 0.08;
         this.edgeHue = params.has("edge_hue")
-            ? params.get("edge_hue").getAsDouble() : 0.58;   // cool blue
+            ? params.get("edge_hue").getAsDouble() : 0.58;
         this.saturation = params.has("saturation")
             ? params.get("saturation").getAsDouble() : 0.9;
         this.verticalPhaseSec = params.has("vertical_phase_sec")
             ? params.get("vertical_phase_sec").getAsDouble() : 0.6;
+        this.pairDurationSec = params.has("pair_duration_sec")
+            ? params.get("pair_duration_sec").getAsDouble() : 5.0;
 
         this.topology = new LEDBoxTopology();
         this.topology.load();
+        this.pairs = topology.getPairs();
 
-        // Pre-compute the maximum distance from the midline for hue normalization,
-        // plus the y range so we can spread the per-box phase offset evenly.
         double maxDist = 1.0;
         double yMin = Double.POSITIVE_INFINITY;
         double yMax = Double.NEGATIVE_INFINITY;
@@ -70,64 +73,62 @@ public class BoxBreatheGridEffect implements Effect {
         this.maxYRange = Math.max(1.0, yMax - yMin);
 
         System.out.println("BoxBreatheGridEffect initialized:");
-        System.out.println("  Boxes: " + topology.boxCount());
+        System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
         System.out.println("  Breath period: " + breathPeriodSec + "s");
-        System.out.println("  Hue range: center=" + centerHue + " edge=" + edgeHue);
     }
 
     @Override
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         Map<Integer, Color> pixels = new HashMap<>();
-        List<LEDBoxTopology.Box> boxes = topology.getBoxes();
-        if (boxes.isEmpty()) return pixels;
+        if (pairs.isEmpty()) return pixels;
 
+        // Cycle one pair at a time with crossfade.
+        int totalPairs = pairs.size();
+        double slot = timeSeconds / pairDurationSec;
+        int activeIdx = ((int) slot) % totalPairs;
+        double progress = slot - Math.floor(slot);
+        double fade = 1.0;
+        if (progress < 0.1) fade = progress / 0.1;
+        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
+
+        LEDBoxTopology.Pair p = pairs.get(activeIdx);
         double twoPi = Math.PI * 2;
         double breathOmega = twoPi / Math.max(0.001, breathPeriodSec);
 
-        for (LEDBoxTopology.Box b : boxes) {
-            // Symmetric horizontal distance from the midline (always >= 0)
-            double dist = Math.abs(b.centroidX - topology.getMidlineX());
-            double tHue = Math.min(1.0, dist / maxDistFromMidline);
-            float hue = (float) (centerHue + (edgeHue - centerHue) * tHue);
-            // Normalize hue into [0,1)
-            hue = (float) (((hue % 1.0) + 1.0) % 1.0);
-
-            // Per-box vertical phase offset (depends on y only -> stays mirror-symmetric)
-            double yNorm = (b.centroidY - minY) / maxYRange;
-            double phaseOffset = yNorm * verticalPhaseSec * breathOmega;
-
-            // Cosine breath shaped to (min..max) brightness
-            double phase = breathOmega * timeSeconds + phaseOffset;
-            double s = 0.5 - 0.5 * Math.cos(phase); // 0..1
-            double brightness = minBrightness + (maxBrightness - minBrightness) * s;
-
-            Color base = Color.getHSBColor(hue, (float) saturation, 1f);
-            int rr = (int) (base.getRed() * brightness);
-            int gg = (int) (base.getGreen() * brightness);
-            int bb = (int) (base.getBlue() * brightness);
-            Color out = new Color(
-                Math.max(0, Math.min(255, rr)),
-                Math.max(0, Math.min(255, gg)),
-                Math.max(0, Math.min(255, bb))
-            );
-
-            for (int led : b.perimeter) {
-                // If two boxes share an LED (boxes adjoin at a line), keep the brightest one.
-                Color existing = pixels.get(led);
-                if (existing == null || luminance(out) > luminance(existing)) {
-                    pixels.put(led, out);
-                }
-            }
+        renderBox(p.left, breathOmega, timeSeconds, fade, pixels);
+        if (!p.selfSymmetric) {
+            renderBox(p.right, breathOmega, timeSeconds, fade, pixels);
         }
         return pixels;
     }
 
-    private static double luminance(Color c) {
-        return 0.2126 * c.getRed() + 0.7152 * c.getGreen() + 0.0722 * c.getBlue();
+    private void renderBox(LEDBoxTopology.Box b, double breathOmega, double timeSeconds,
+                           double fade, Map<Integer, Color> pixels) {
+        double dist = Math.abs(b.centroidX - topology.getMidlineX());
+        double tHue = Math.min(1.0, dist / maxDistFromMidline);
+        float hue = (float) (centerHue + (edgeHue - centerHue) * tHue);
+        hue = (float) (((hue % 1.0) + 1.0) % 1.0);
+
+        double yNorm = (b.centroidY - minY) / maxYRange;
+        double phaseOffset = yNorm * verticalPhaseSec * breathOmega;
+
+        double phase = breathOmega * timeSeconds + phaseOffset;
+        double s = 0.5 - 0.5 * Math.cos(phase);
+        double brightness = minBrightness + (maxBrightness - minBrightness) * s * fade;
+
+        Color base = Color.getHSBColor(hue, (float) saturation, 1f);
+        int rr = Math.max(0, Math.min(255, (int) (base.getRed() * brightness)));
+        int gg = Math.max(0, Math.min(255, (int) (base.getGreen() * brightness)));
+        int bb = Math.max(0, Math.min(255, (int) (base.getBlue() * brightness)));
+        Color out = new Color(rr, gg, bb);
+
+        for (int led : b.perimeter) {
+            pixels.put(led, out);
+        }
     }
 
     @Override
-    public void dispose() { /* nothing to clean up */ }
+    public void dispose() {}
 
     @Override public String getName() { return "Box Breathe Grid"; }
     @Override public int getFPS() { return fps; }

@@ -1,6 +1,6 @@
 {
   "name": "Box Ripple",
-  "description": "Wavefronts emanate outward from the fox's vertical centerline; left and right mirror boxes light up in perfect lockstep",
+  "description": "Wavefronts pass through one box pair at a time; left and right mirror boxes light up in perfect lockstep",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "box_ripple",
@@ -10,6 +10,7 @@
     "wave_speed_px_per_sec": 80.0,
     "wave_width_px": 60.0,
     "spawn_interval_sec": 1.6,
-    "brightness": 1.0
+    "brightness": 1.0,
+    "pair_duration_sec": 6.0
   }
 }

@@ -33,8 +33,10 @@ public class MirrorSnakeEffect implements Effect {
     private double brightness;
     private double saturation;
 
-    private double headPosition; // shared floating LED-step counter
-    private List<SnakeGroup> groups;
+    private double pairDurationSec;
+
+    private double headPosition;
+    private List<LEDBoxTopology.Pair> pairs;
 
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
@@ -50,29 +52,20 @@ public class MirrorSnakeEffect implements Effect {
             ? params.get("brightness").getAsDouble() : 1.0;
         this.saturation = params.has("saturation")
             ? params.get("saturation").getAsDouble() : 0.85;
+        this.pairDurationSec = params.has("pair_duration_sec")
+            ? params.get("pair_duration_sec").getAsDouble() : 6.0;
         this.headPosition = 0;
 
-        // Load topology and mirror map
         this.topology = new LEDBoxTopology();
         this.topology.load();
 
         this.mirrorMap = new LEDMirrorMap();
         this.mirrorMap.load();
 
-        // Build one SnakeGroup per symmetric pair, driving only the left box.
-        this.groups = new ArrayList<>();
-        List<LEDBoxTopology.Pair> pairs = topology.getPairs();
-        for (int i = 0; i < pairs.size(); i++) {
-            LEDBoxTopology.Pair p = pairs.get(i);
-            float hue = pairs.size() <= 1 ? 0.6f : (float) i / (float) pairs.size();
-            Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
-            groups.add(new SnakeGroup(p.left, baseColor));
-        }
+        this.pairs = topology.getPairs();
 
-        int snakeCount = 0;
-        for (SnakeGroup g : groups) snakeCount += snakesPerBox;
         System.out.println("MirrorSnakeEffect initialized:");
-        System.out.println("  Groups: " + groups.size() + ", snakes total: " + snakeCount);
+        System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
         System.out.println("  Speed: " + speedLedsPerSec + " leds/sec, trail: " + trailLength);
     }
 
@@ -85,44 +78,23 @@ public class MirrorSnakeEffect implements Effect {
         double[] g = new double[n];
         double[] b = new double[n];
 
-        for (SnakeGroup sg : groups) {
-            int len = sg.box.perimeter.size();
-            if (len == 0) continue;
-            int head = (int) Math.floor(headPosition);
+        if (pairs.isEmpty()) return new HashMap<>();
 
-            for (int s = 0; s < snakesPerBox; s++) {
-                // Evenly space snakes around the perimeter
-                int snakeOffset = (len * s) / snakesPerBox;
+        // Cycle one pair at a time with crossfade.
+        int totalPairs = pairs.size();
+        double slot = timeSeconds / pairDurationSec;
+        int activeIdx = ((int) slot) % totalPairs;
+        double progress = slot - Math.floor(slot);
+        double fade = 1.0;
+        if (progress < 0.1) fade = progress / 0.1;
+        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
 
-                for (int t = 0; t < trailLength; t++) {
-                    int offset = head + snakeOffset - t;
-                    int idx = ((offset % len) + len) % len;
-                    int led = sg.box.perimeter.get(idx);
+        LEDBoxTopology.Pair p = pairs.get(activeIdx);
+        float hue = totalPairs <= 1 ? 0.6f : (float) activeIdx / (float) totalPairs;
+        Color baseColor = Color.getHSBColor(hue, (float) saturation, 1f);
 
-                    // Brightness falloff along the trail
-                    double falloff = 1.0 - (double) t / (double) trailLength;
-                    falloff = falloff * falloff; // quadratic soften
-                    double k = falloff * brightness;
-
-                    double cr = sg.color.getRed()   * k;
-                    double cg = sg.color.getGreen() * k;
-                    double cb = sg.color.getBlue()  * k;
-
-                    // Light the LED on the driving (left) box
-                    r[led] += cr;
-                    g[led] += cg;
-                    b[led] += cb;
-
-                    // Light its per-LED mirror twin
-                    int mirror = mirrorMap.getMirror(led);
-                    if (mirror != led) {
-                        r[mirror] += cr;
-                        g[mirror] += cg;
-                        b[mirror] += cb;
-                    }
-                }
-            }
-        }
+        renderBox(p.left, baseColor, fade, r, g, b);
+        // Mirror twin lights up via mirrorMap — no need to explicitly render right box
 
         Map<Integer, Color> pixels = new HashMap<>();
         for (int i = 0; i < n; i++) {
@@ -137,21 +109,45 @@ public class MirrorSnakeEffect implements Effect {
         return pixels;
     }
 
-    @Override
-    public void dispose() {
-        if (groups != null) groups.clear();
+    private void renderBox(LEDBoxTopology.Box box, Color color, double fade,
+                           double[] r, double[] g, double[] b) {
+        int len = box.perimeter.size();
+        if (len == 0) return;
+        int head = (int) Math.floor(headPosition);
+
+        for (int s = 0; s < snakesPerBox; s++) {
+            int snakeOffset = (len * s) / snakesPerBox;
+            for (int t = 0; t < trailLength; t++) {
+                int offset = head + snakeOffset - t;
+                int idx = ((offset % len) + len) % len;
+                int led = box.perimeter.get(idx);
+
+                double falloff = 1.0 - (double) t / (double) trailLength;
+                falloff = falloff * falloff;
+                double k = falloff * brightness * fade;
+
+                double cr = color.getRed()   * k;
+                double cg = color.getGreen() * k;
+                double cb = color.getBlue()  * k;
+
+                r[led] += cr;
+                g[led] += cg;
+                b[led] += cb;
+
+                int mirror = mirrorMap.getMirror(led);
+                if (mirror != led && mirror >= 0 && mirror < r.length) {
+                    r[mirror] += cr;
+                    g[mirror] += cg;
+                    b[mirror] += cb;
+                }
+            }
+        }
     }
+
+    @Override
+    public void dispose() {}
 
     @Override public String getName() { return "Mirror Snake"; }
     @Override public int getFPS() { return fps; }
 
-    /** One group per symmetric pair — drives the left box only. */
-    private static class SnakeGroup {
-        final LEDBoxTopology.Box box;
-        final Color color;
-        SnakeGroup(LEDBoxTopology.Box box, Color color) {
-            this.box = box;
-            this.color = color;
-        }
-    }
 }

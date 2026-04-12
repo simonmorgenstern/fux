@@ -23,19 +23,21 @@ public class BoxRippleEffect implements Effect {
     private double waveWidthPx;
     private double spawnIntervalSec;
     private double brightness;
+    private double pairDurationSec;
 
     private double timeSinceSpawnSec;
     private java.util.List<Wave> waves;
     private double maxDistFromMidline;
     private java.util.Random random;
+    private List<LEDBoxTopology.Pair> pairs;
 
     private static final Color[] PALETTE = {
-        new Color(255, 120,  60),  // warm
-        new Color(255, 220,  80),  // gold
-        new Color( 80, 255, 200),  // teal
-        new Color( 60, 180, 255),  // sky
-        new Color(180,  80, 255),  // violet
-        new Color(255,  80, 180),  // pink
+        new Color(255, 120,  60),
+        new Color(255, 220,  80),
+        new Color( 80, 255, 200),
+        new Color( 60, 180, 255),
+        new Color(180,  80, 255),
+        new Color(255,  80, 180),
     };
 
     @Override
@@ -50,13 +52,16 @@ public class BoxRippleEffect implements Effect {
             ? params.get("spawn_interval_sec").getAsDouble() : 1.6;
         this.brightness = params.has("brightness")
             ? params.get("brightness").getAsDouble() : 1.0;
+        this.pairDurationSec = params.has("pair_duration_sec")
+            ? params.get("pair_duration_sec").getAsDouble() : 6.0;
 
-        this.timeSinceSpawnSec = Double.MAX_VALUE; // spawn immediately
+        this.timeSinceSpawnSec = Double.MAX_VALUE;
         this.waves = new java.util.ArrayList<>();
         this.random = new java.util.Random();
 
         this.topology = new LEDBoxTopology();
         this.topology.load();
+        this.pairs = topology.getPairs();
 
         double maxDist = 1.0;
         for (LEDBoxTopology.Box b : topology.getBoxes()) {
@@ -66,7 +71,7 @@ public class BoxRippleEffect implements Effect {
         this.maxDistFromMidline = maxDist;
 
         System.out.println("BoxRippleEffect initialized:");
-        System.out.println("  Boxes: " + topology.boxCount() + ", max distance from midline: " + maxDistFromMidline);
+        System.out.println("  Pairs: " + pairs.size() + " (cycling one at a time)");
         System.out.println("  Wave speed: " + waveSpeedPxPerSec + " px/s, width: " + waveWidthPx + " px");
     }
 
@@ -80,34 +85,31 @@ public class BoxRippleEffect implements Effect {
             timeSinceSpawnSec = 0;
         }
         for (Wave w : waves) w.distance += waveSpeedPxPerSec * dt;
-        // A wave dies once it has fully passed the outermost box plus one wavelength
-        waves.removeIf(w -> w.distance > maxDistFromMidline + waveWidthPx);
+        java.util.Iterator<Wave> it = waves.iterator();
+        while (it.hasNext()) { if (it.next().distance > maxDistFromMidline + waveWidthPx) it.remove(); }
 
         int n = coords.getCount();
         double[] r = new double[n];
         double[] g = new double[n];
         double[] b = new double[n];
 
-        List<LEDBoxTopology.Box> boxes = topology.getBoxes();
+        if (pairs.isEmpty()) return new HashMap<>();
+
+        // Cycle one pair at a time with crossfade.
+        int totalPairs = pairs.size();
+        double slot = timeSeconds / pairDurationSec;
+        int activeIdx = ((int) slot) % totalPairs;
+        double progress = slot - Math.floor(slot);
+        double fade = 1.0;
+        if (progress < 0.1) fade = progress / 0.1;
+        else if (progress > 0.9) fade = (1.0 - progress) / 0.1;
+
+        LEDBoxTopology.Pair p = pairs.get(activeIdx);
         double mid = topology.getMidlineX();
 
-        for (LEDBoxTopology.Box box : boxes) {
-            double dist = Math.abs(box.centroidX - mid);
-            for (Wave w : waves) {
-                double delta = Math.abs(w.distance - dist);
-                if (delta > waveWidthPx) continue;
-                // Smooth half-cosine falloff: 1 at delta=0, 0 at delta=waveWidthPx
-                double env = 0.5 + 0.5 * Math.cos(Math.PI * delta / waveWidthPx);
-                env *= brightness;
-                double cr = w.color.getRed()   * env;
-                double cg = w.color.getGreen() * env;
-                double cb = w.color.getBlue()  * env;
-                for (int led : box.perimeter) {
-                    r[led] += cr;
-                    g[led] += cg;
-                    b[led] += cb;
-                }
-            }
+        renderBox(p.left, mid, fade, r, g, b);
+        if (!p.selfSymmetric) {
+            renderBox(p.right, mid, fade, r, g, b);
         }
 
         Map<Integer, Color> pixels = new HashMap<>();
@@ -123,17 +125,34 @@ public class BoxRippleEffect implements Effect {
         return pixels;
     }
 
-    @Override
-    public void dispose() {
-        if (waves != null) waves.clear();
+    private void renderBox(LEDBoxTopology.Box box, double mid, double fade,
+                           double[] r, double[] g, double[] b) {
+        double dist = Math.abs(box.centroidX - mid);
+        for (Wave w : waves) {
+            double delta = Math.abs(w.distance - dist);
+            if (delta > waveWidthPx) continue;
+            double env = 0.5 + 0.5 * Math.cos(Math.PI * delta / waveWidthPx);
+            env *= brightness * fade;
+            double cr = w.color.getRed()   * env;
+            double cg = w.color.getGreen() * env;
+            double cb = w.color.getBlue()  * env;
+            for (int led : box.perimeter) {
+                r[led] += cr;
+                g[led] += cg;
+                b[led] += cb;
+            }
+        }
     }
+
+    @Override
+    public void dispose() { if (waves != null) waves.clear(); }
 
     @Override public String getName() { return "Box Ripple"; }
     @Override public int getFPS() { return fps; }
 
     private static class Wave {
         final Color color;
-        double distance; // current radial distance from midline
+        double distance;
         Wave(Color color) { this.color = color; this.distance = 0; }
     }
 }
