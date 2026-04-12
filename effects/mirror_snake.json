@@ -1,0 +1,17 @@
+{
+  "name": "Mirror Snake",
+  "description": "Snakes run around one box pair at a time; every LED also lights its per-LED mirror twin, combining box topology with mirror symmetry",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "mirror_snake",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "speed_leds_per_sec": 14.0,
+    "trail_length": 8,
+    "snakes_per_box": 2,
+    "brightness": 1.0,
+    "saturation": 0.85,
+    "pair_duration_sec": 6.0
+  }
+}

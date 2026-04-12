@@ -1,0 +1,15 @@
+{
+  "name": "Mirror Wave",
+  "description": "Horizontal light waves radiate from the fox's vertical centerline outward. Mirror LED pairs light up in perfect lockstep, leaving a fading color trail",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "mirror_wave",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "wave_speed": 120.0,
+    "wave_width": 80.0,
+    "spawn_interval_sec": 1.4,
+    "brightness": 1.0
+  }
+}

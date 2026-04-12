@@ -1,0 +1,15 @@
+{
+  "name": "Flood Fill",
+  "description": "Multiple colors expand from random starting points, racing to claim territory across the LED graph",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "flood_fill",
+  "fps": 20,
+  "duration": 30,
+  "parameters": {
+    "num_colors": 0,
+    "ticks_per_step": 3,
+    "hold_frames": 40,
+    "fps": 20
+  }
+}

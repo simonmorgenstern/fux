@@ -1,0 +1,18 @@
+{
+  "name": "Center Heartbeat",
+  "description": "The fox's visual center glows with a double-beat heartbeat rhythm that propagates outward through the wiring graph. Center brightest, edges dimmer",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "center_heartbeat",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "center_leds": [145, 146, 183, 184, 213],
+    "beat_period_sec": 1.2,
+    "propagation_speed": 25.0,
+    "min_brightness": 0.03,
+    "max_brightness": 1.0,
+    "hue": 0.0,
+    "saturation": 0.9
+  }
+}

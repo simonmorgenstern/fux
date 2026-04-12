@@ -1,0 +1,16 @@
+{
+  "name": "Mirror Cascade",
+  "description": "Color flows top-to-bottom through the fox with perfect left/right symmetry enforced per-LED. A rainbow wave sweeps down the body",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "mirror_cascade",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "cascade_speed": 100.0,
+    "wave_width": 120.0,
+    "hue_shift_speed": 0.05,
+    "brightness": 1.0,
+    "saturation": 0.85
+  }
+}

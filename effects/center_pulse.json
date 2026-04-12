@@ -1,0 +1,16 @@
+{
+  "name": "Center Pulse",
+  "description": "Concentric waves of color expand outward from the fox's visual center using graph distance. Waves follow the wiring topology with mirror symmetry",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "center_pulse",
+  "fps": 30,
+  "duration": 30,
+  "parameters": {
+    "center_leds": [145, 146, 183, 184, 213],
+    "wave_speed": 8.0,
+    "wave_width": 5.0,
+    "spawn_interval_sec": 1.2,
+    "brightness": 1.0
+  }
+}
