@@ -1,6 +1,6 @@
 {
   "name": "Drop Pulse",
-  "description": "Energy builds from edges inward then explodes from center like a beat drop",
+  "description": "Energy builds from edges inward toward the fox's center LEDs, then explodes outward following the wiring graph",
   "version": "1.0",
   "type": "procedural",
   "algorithm": "drop_pulse",
@@ -9,6 +9,7 @@
   "parameters": {
     "drop_rate": 0.5,
     "build_ratio": 0.7,
-    "brightness": 1.0
+    "brightness": 1.0,
+    "center_leds": [145, 146, 183, 184, 213]
   }
 }
