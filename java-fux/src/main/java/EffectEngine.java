@@ -4,8 +4,10 @@ import com.google.gson.JsonObject;
 import java.awt.Color;
 import java.io.FileReader;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
 
@@ -68,6 +70,13 @@ public class EffectEngine implements Runnable {
         add("star");
     }};
     
+    // Casino mode state
+    public enum CasinoState { IDLE, ROLLING, RED, GREEN, BLACK }
+    private volatile CasinoState casinoState = CasinoState.IDLE;
+    private long casinoRollStartMs = 0;
+    private List<Integer> casinoOutsideLEDs;
+    private Map<Integer, Double> casinoOutsideAngles;
+
     // Callback for state updates
     private StateUpdateCallback stateUpdateCallback = null;
     
@@ -89,9 +98,143 @@ public class EffectEngine implements Runnable {
     }
     
     public void setMode(ControlMode mode) {
+        ControlMode previous = this.mode;
         this.mode = mode;
+        if (mode == ControlMode.CASINO) {
+            initCasinoLEDs();
+            casinoState = CasinoState.IDLE;
+            currentEffect = null;
+            clearAllLEDs();
+        } else if (previous == ControlMode.CASINO) {
+            casinoState = CasinoState.IDLE;
+            clearAllLEDs();
+        }
         System.out.println("Mode changed to " + mode);
         broadcastState();
+    }
+
+    // MARK: - Casino mode
+
+    /**
+     * Start the casino "roll": rainbow circulates around the outside ring.
+     * Switches into CASINO mode if not already.
+     */
+    public void casinoRoll() {
+        if (mode != ControlMode.CASINO) {
+            this.mode = ControlMode.CASINO;
+        }
+        initCasinoLEDs();
+        currentEffect = null;
+        casinoState = CasinoState.ROLLING;
+        casinoRollStartMs = System.currentTimeMillis();
+        System.out.println("Casino: ROLL");
+        broadcastState();
+    }
+
+    /**
+     * Set the casino roulette result. Red → all LEDs red, Green → all green,
+     * Black → all LEDs off. Stops the rolling animation.
+     */
+    public void casinoSetResult(CasinoState result) {
+        if (mode != ControlMode.CASINO) {
+            this.mode = ControlMode.CASINO;
+        }
+        if (result == CasinoState.ROLLING) {
+            casinoRoll();
+            return;
+        }
+        casinoState = result;
+        System.out.println("Casino: result = " + result);
+        broadcastState();
+    }
+
+    private void initCasinoLEDs() {
+        if (casinoOutsideLEDs != null && !casinoOutsideLEDs.isEmpty()) {
+            return;
+        }
+        Set<Integer> outsideSet = LEDGroupLoader.loadGroup("outside");
+        casinoOutsideLEDs = new ArrayList<>(outsideSet);
+        casinoOutsideAngles = new HashMap<>();
+
+        if (coordinates == null || casinoOutsideLEDs.isEmpty()) {
+            return;
+        }
+
+        double cx = 0, cy = 0;
+        int count = 0;
+        for (int led : casinoOutsideLEDs) {
+            if (led < coordinates.getCount()) {
+                PixelCoordinate c = coordinates.get(led);
+                cx += c.getX();
+                cy += c.getY();
+                count++;
+            }
+        }
+        if (count > 0) {
+            cx /= count;
+            cy /= count;
+        }
+
+        for (int led : casinoOutsideLEDs) {
+            if (led < coordinates.getCount()) {
+                PixelCoordinate c = coordinates.get(led);
+                double dx = c.getX() - cx;
+                double dy = c.getY() - cy;
+                double angle = Math.atan2(dy, dx);
+                if (angle < 0) angle += 2 * Math.PI;
+                casinoOutsideAngles.put(led, angle);
+            }
+        }
+        System.out.println("Casino: outside ring has " + casinoOutsideLEDs.size() + " LEDs");
+    }
+
+    private void renderCasinoFrame() {
+        synchronized (renderLock) {
+            if (closed || mainStrip == null) return;
+            try {
+                // Clear all first
+                for (int i = 0; i < 268; i++) {
+                    mainStrip.setPixelColourRGB(i, 0, 0, 0);
+                }
+
+                switch (casinoState) {
+                    case ROLLING: {
+                        if (casinoOutsideLEDs == null || casinoOutsideAngles == null) break;
+                        double rotationTime = 1.5; // seconds per full rotation
+                        double elapsed = (System.currentTimeMillis() - casinoRollStartMs) / 1000.0;
+                        double rotation = (elapsed / rotationTime) * 2 * Math.PI;
+                        for (int led : casinoOutsideLEDs) {
+                            Double angle = casinoOutsideAngles.get(led);
+                            if (angle == null) continue;
+                            double rel = (angle - rotation) % (2 * Math.PI);
+                            if (rel < 0) rel += 2 * Math.PI;
+                            float hue = (float) (rel / (2 * Math.PI));
+                            Color c = Color.getHSBColor(hue, 1.0f, 1.0f);
+                            mainStrip.setPixelColourRGB(led, c.getRed(), c.getGreen(), c.getBlue());
+                        }
+                        break;
+                    }
+                    case RED:
+                        for (int i = 0; i < 268; i++) {
+                            mainStrip.setPixelColourRGB(i, 255, 0, 0);
+                        }
+                        break;
+                    case GREEN:
+                        for (int i = 0; i < 268; i++) {
+                            mainStrip.setPixelColourRGB(i, 0, 255, 0);
+                        }
+                        break;
+                    case BLACK:
+                    case IDLE:
+                    default:
+                        // Already cleared above
+                        break;
+                }
+                mainStrip.render();
+            } catch (Exception e) {
+                // ignore native strip errors
+            }
+        }
     }
     
     /**
@@ -447,6 +590,13 @@ public class EffectEngine implements Runnable {
         
         while (running) {
             try {
+                // Casino mode is handled separately - it bypasses the effect system.
+                if (mode == ControlMode.CASINO) {
+                    renderCasinoFrame();
+                    Thread.sleep(casinoState == CasinoState.ROLLING ? 33 : 100);
+                    continue;
+                }
+
                 // If we have a current effect, ensure min display time before switching
                 if (currentEffect != null) {
                     long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;

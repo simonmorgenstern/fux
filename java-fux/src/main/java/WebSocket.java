@@ -126,6 +126,7 @@ public class WebSocket extends WebSocketServer {
             // Check if effect engine commands are available
             if (!isHardwareAvailable &&
                 (message.startsWith("MODE:") || message.startsWith("ADD_QUEUE:") ||
+                 message.startsWith("CASINO:") ||
                  message.equals("CLEAR_QUEUE") || message.equals("GET_STATE") ||
                  message.equals("STOP_EFFECT") || message.equals("MODE:OFF"))) {
                 webSocket.send("{\"error\":\"Command not available in preview-only mode. Use /api/preview endpoint instead.\"}");
@@ -154,6 +155,30 @@ public class WebSocket extends WebSocketServer {
             if (message.equals("MODE:OFF")) {
                 effectEngine.turnOff();
                 System.out.println("Mode set to OFF");
+                return;
+            }
+
+            if (message.equals("MODE:CASINO")) {
+                effectEngine.setMode(ControlMode.CASINO);
+                System.out.println("Mode set to CASINO");
+                return;
+            }
+
+            // Casino control commands
+            if (message.equals("CASINO:ROLL")) {
+                effectEngine.casinoRoll();
+                return;
+            }
+            if (message.equals("CASINO:RED")) {
+                effectEngine.casinoSetResult(EffectEngine.CasinoState.RED);
+                return;
+            }
+            if (message.equals("CASINO:GREEN")) {
+                effectEngine.casinoSetResult(EffectEngine.CasinoState.GREEN);
+                return;
+            }
+            if (message.equals("CASINO:BLACK")) {
+                effectEngine.casinoSetResult(EffectEngine.CasinoState.BLACK);
                 return;
             }
 
