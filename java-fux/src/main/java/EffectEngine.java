@@ -200,16 +200,22 @@ public class EffectEngine implements Runnable {
                 switch (casinoState) {
                     case ROLLING: {
                         if (casinoOutsideLEDs == null || casinoOutsideAngles == null) break;
+                        // Narrow rainbow "ball" sweeps around the ring like a roulette ball.
                         double rotationTime = 1.5; // seconds per full rotation
                         double elapsed = (System.currentTimeMillis() - casinoRollStartMs) / 1000.0;
-                        double rotation = (elapsed / rotationTime) * 2 * Math.PI;
+                        double headAngle = (elapsed / rotationTime) * 2 * Math.PI;
+                        double tailWidth = Math.PI / 12; // ~15 deg ≈ 4 LEDs on a 91-LED ring
                         for (int led : casinoOutsideLEDs) {
                             Double angle = casinoOutsideAngles.get(led);
                             if (angle == null) continue;
-                            double rel = (angle - rotation) % (2 * Math.PI);
-                            if (rel < 0) rel += 2 * Math.PI;
-                            float hue = (float) (rel / (2 * Math.PI));
-                            Color c = Color.getHSBColor(hue, 1.0f, 1.0f);
+                            // Distance from head, trailing backwards along direction of motion.
+                            double delta = (headAngle - angle) % (2 * Math.PI);
+                            if (delta < 0) delta += 2 * Math.PI;
+                            if (delta > tailWidth) continue;
+                            double t = delta / tailWidth; // 0 at head, 1 at end of tail
+                            float hue = (float) t; // rainbow across the comet
+                            float brightness = (float) (1.0 - t * 0.6);
+                            Color c = Color.getHSBColor(hue, 1.0f, brightness);
                             mainStrip.setPixelColourRGB(led, c.getRed(), c.getGreen(), c.getBlue());
                         }
                         break;
