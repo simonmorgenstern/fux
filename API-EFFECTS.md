@@ -116,7 +116,6 @@ The API provides metadata for all 18 built-in effects:
 - **rain** - Rain drops falling down
 - **aurora** - Aurora borealis effect
 - **bilateral_fill** - Bilateral fill patterns
-- **motion_blur** - Motion blur effects
 - **gradient** - Color gradient transitions
 - **box_mirror** - Mirrored box patterns
 - **eye_blink** - Eye blinking effect

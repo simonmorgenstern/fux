@@ -250,8 +250,6 @@ public class PreviewHttpHandler implements HttpHandler {
             case "rain": return new RainEffect();
             case "aurora": return new AuroraEffect();
             case "bilateral_fill": return new BilateralFillEffect();
-            case "motion_blur": return new MotionBlurEffect();
-
 
             case "diamond_pulse": return new DiamondPulseEffect();
             case "outside_spin": return new OutsideSpinEffect();

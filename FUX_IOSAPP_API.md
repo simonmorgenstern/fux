@@ -51,7 +51,6 @@ ADD_QUEUE:rainbow_pulse
 - `rain`
 - `aurora`
 - `bilateral_fill`
-- `motion_blur`
 - `gradient`
 - `box_mirror`
 - `eye_blink`

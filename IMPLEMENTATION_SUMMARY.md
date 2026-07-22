@@ -73,7 +73,7 @@ Successfully implemented a complete GIF preview endpoint for the Fux LED project
 All 18+ effects from the EffectRenderer including:
 - sparkle, rainbow_pulse, radial_wave, breathing, fire, snake
 - meteor_shower, firework, rain, aurora, bilateral_fill
-- motion_blur, gradient, box_mirror, eye_blink, diamond_pulse
+- gradient, box_mirror, eye_blink, diamond_pulse
 - box_wave, outside_spin
 
 ### 4. PreviewHttpServer.java

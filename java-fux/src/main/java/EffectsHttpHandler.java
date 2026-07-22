@@ -35,7 +35,6 @@ public class EffectsHttpHandler implements HttpHandler {
         "rain",
         "aurora",
         "bilateral_fill",
-        "motion_blur",
         "diamond_pulse",
         "outside_spin",
         "heartbeat",

@@ -28,6 +28,7 @@ public class EffectEngine implements Runnable {
     private long frameNumber = 0;
     private int currentEffectDuration = 30; // total seconds for current effect
     private int currentEffectDefaultDuration = 30; // duration from JSON
+    private long lastBroadcastElapsedSeconds = -1; // throttles countdown STATE pushes to once/sec
     private final Random random = new Random();
     
     // Available effects
@@ -42,7 +43,6 @@ public class EffectEngine implements Runnable {
         add("rain");
         add("aurora");
         add("bilateral_fill");
-        add("motion_blur");
         add("diamond_pulse");
         add("outside_spin");
         add("heartbeat");
@@ -427,9 +427,6 @@ public class EffectEngine implements Runnable {
                 case "bilateral_fill":
                     currentEffect = new BilateralFillEffect();
                     break;
-                case "motion_blur":
-                    currentEffect = new MotionBlurEffect();
-                    break;
                 case "diamond_pulse":
                     currentEffect = new DiamondPulseEffect();
                     break;
@@ -618,7 +615,14 @@ public class EffectEngine implements Runnable {
                         Thread.sleep(100);
                         continue;
                     }
-                    
+
+                    // Push a STATE update once per second so clients can show a live countdown
+                    if ((mode == ControlMode.QUEUE || mode == ControlMode.RANDOM)
+                            && elapsedSeconds != lastBroadcastElapsedSeconds) {
+                        lastBroadcastElapsedSeconds = elapsedSeconds;
+                        broadcastState();
+                    }
+
                     // In other modes, check duration
                     if (elapsedSeconds < currentEffectDuration) {
                         // Render current effect at proper FPS (sleep is handled inside renderFrame)
@@ -634,6 +638,10 @@ public class EffectEngine implements Runnable {
                     if (entry != null) {
                         loadEffect(entry.getEffectName(), entry);
                         broadcastState();
+                    } else if (currentEffect != null) {
+                        // The effect that just finished was the last one in the queue - power down
+                        System.out.println("Queue finished - turning off");
+                        turnOff();
                     }
                 } else if (mode == ControlMode.RANDOM) {
                     // Pick a random effect

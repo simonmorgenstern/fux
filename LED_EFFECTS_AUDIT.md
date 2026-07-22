@@ -61,7 +61,6 @@ All these effects use `../led-namer/led-groups.json` with a relative path that w
 | 9 | rain | ✅ WORKING | None | Good droplet simulation |
 | 10 | aurora | ✅ WORKING | None | Complex wave calculations |
 | 11 | bilateral_fill | ✅ WORKING | None | Interesting fill patterns |
-| 12 | motion_blur | ✅ WORKING | None | Simple flicker effect |
 | 13 | gradient | ✅ WORKING | None | Multiple gradient modes |
 | 14 | box_mirror | ✅ WORKING | Hardcoded box mappings | Works but not dynamic |
 | 15 | eye_blink | ❌ BROKEN | LED group path issue | Can't load eyes group |

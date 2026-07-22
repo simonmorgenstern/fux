@@ -109,7 +109,6 @@ The `effect` field in POST /api/queue **must exactly match** the effect `id` ret
 - `rain`
 - `aurora`
 - `bilateral_fill`
-- `motion_blur`
 - `gradient`
 - `box_mirror`
 - `eye_blink`

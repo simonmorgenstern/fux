@@ -112,7 +112,6 @@ All effects in the EffectRenderer are supported:
 - `rain` - Rain effect
 - `aurora` - Aurora/northern lights effect
 - `bilateral_fill` - Bilateral fill pattern
-- `motion_blur` - Motion blur effect
 - `gradient` - Color gradient transitions
 - `box_mirror` - Mirrored box pattern
 - `eye_blink` - Blinking eyes effect

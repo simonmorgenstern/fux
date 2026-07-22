@@ -76,7 +76,6 @@ firework          | Explosions
 rain              | Rain effect
 aurora            | Northern lights
 bilateral_fill    | Fill pattern
-motion_blur       | Blur effect
 gradient          | Color gradient
 box_mirror        | Mirror pattern
 eye_blink         | Blinking eyes
