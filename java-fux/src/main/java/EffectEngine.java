@@ -68,8 +68,25 @@ public class EffectEngine implements Runnable {
         add("center_pulse");
         add("center_heartbeat");
         add("star");
+        add("beat_pulse");
+        add("beat_sweep");
+        add("beat_sparkle");
     }};
-    
+
+    // Music mode: beat-synced effects rotated on every track change, plus an
+    // ambient fallback for tracks whose tempo could not be looked up.
+    private final List<String> musicEffects = new ArrayList<String>() {{
+        add("beat_pulse");
+        add("beat_sweep");
+        add("beat_sparkle");
+    }};
+    private static final String MUSIC_FALLBACK_EFFECT = "aurora";
+
+    private MusicSyncService musicSyncService;
+    private volatile boolean musicEffectDirty = false;
+    private String lastMusicEffect = null;
+    private boolean musicEffectIsBeatSynced = false;
+
     // Casino mode state
     public enum CasinoState { IDLE, ROLLING, RED, GREEN, BLACK }
     private volatile CasinoState casinoState = CasinoState.IDLE;
@@ -109,8 +126,124 @@ public class EffectEngine implements Runnable {
             casinoState = CasinoState.IDLE;
             clearAllLEDs();
         }
+
+        if (mode == ControlMode.MUSIC) {
+            effectQueue.clear();
+            currentEffect = null;
+            lastMusicEffect = null;
+            musicEffectDirty = true;
+            startMusicSync();
+        } else if (previous == ControlMode.MUSIC) {
+            stopMusicSync();
+        }
+
         System.out.println("Mode changed to " + mode);
         broadcastState();
+    }
+
+    // MARK: - Music mode
+
+    /**
+     * The music sync service is created lazily on first use so a fux that never
+     * enters MUSIC mode never touches Spotify config, tokens, or the network.
+     */
+    public synchronized MusicSyncService getMusicSyncService() {
+        if (musicSyncService == null) {
+            musicSyncService = new MusicSyncService();
+            musicSyncService.setListener(new MusicSyncService.Listener() {
+                @Override
+                public void onTrackChanged(NowPlaying track) {
+                    // A new song gets a new effect, chosen once the tempo lands.
+                    musicEffectDirty = true;
+                    broadcastState();
+                }
+
+                @Override
+                public void onMusicStateChanged() {
+                    broadcastState();
+                }
+            });
+        }
+        return musicSyncService;
+    }
+
+    private void startMusicSync() {
+        getMusicSyncService().start();
+    }
+
+    private void stopMusicSync() {
+        if (musicSyncService != null) {
+            musicSyncService.stop();
+        }
+    }
+
+    /** Nudges the beat grid of the current track by the given milliseconds. */
+    public void nudgeMusicOffset(long deltaMs) {
+        long offset = getMusicSyncService().nudgeOffset(deltaMs);
+        System.out.println("Music beat offset now " + offset + "ms");
+    }
+
+    public void resetMusicOffset() {
+        getMusicSyncService().resetOffset();
+        System.out.println("Music beat offset reset");
+    }
+
+    public void setMusicBpm(double bpm) {
+        getMusicSyncService().setBpmOverride(bpm);
+        musicEffectDirty = true;
+        System.out.println("Music BPM overridden to " + bpm);
+    }
+
+    /**
+     * Picks the effect for the current track: a beat-synced one when we have a
+     * tempo, the ambient fallback when we do not. Reloads when the sync state
+     * flips, so a track whose BPM arrives a second late still upgrades — and so
+     * a pause, which stops the beat clock and would otherwise freeze the fox on
+     * one frame, drops back to the ambient effect until playback resumes.
+     */
+    private void updateMusicEffect() {
+        MusicSyncService service = getMusicSyncService();
+        boolean synced = service.getBeatClock().isSynced();
+
+        boolean needsReload = musicEffectDirty
+            || currentEffect == null
+            || synced != musicEffectIsBeatSynced;
+        if (!needsReload) {
+            return;
+        }
+        musicEffectDirty = false;
+
+        String next;
+        if (synced) {
+            next = pickMusicEffect();
+        } else {
+            next = MUSIC_FALLBACK_EFFECT;
+        }
+
+        // Nothing to do if the fallback is already running and still applies.
+        if (currentEffect != null && next.equals(lastMusicEffect) && synced == musicEffectIsBeatSynced) {
+            return;
+        }
+
+        lastMusicEffect = next;
+        musicEffectIsBeatSynced = synced;
+        loadEffect(next, new QueueEntry(next, -1, null));
+        broadcastState();
+    }
+
+    /** Random beat effect, avoiding an immediate repeat when there's a choice. */
+    private String pickMusicEffect() {
+        if (musicEffects.isEmpty()) {
+            return MUSIC_FALLBACK_EFFECT;
+        }
+        if (musicEffects.size() == 1) {
+            return musicEffects.get(0);
+        }
+        String next;
+        do {
+            next = musicEffects.get(random.nextInt(musicEffects.size()));
+        } while (next.equals(lastMusicEffect));
+        return next;
     }
 
     // MARK: - Casino mode
@@ -247,6 +380,7 @@ public class EffectEngine implements Runnable {
      * Turn off all LEDs (OFF mode)
      */
     public void turnOff() {
+        stopMusicSync();
         this.mode = ControlMode.OFF;
         this.currentEffect = null;
         effectQueue.clear();
@@ -265,8 +399,9 @@ public class EffectEngine implements Runnable {
         }
         
         // Switch to IDLE mode
+        stopMusicSync();
         this.mode = ControlMode.IDLE;
-        
+
         // Clear queue (idle mode ignores queue)
         effectQueue.clear();
         
@@ -328,8 +463,9 @@ public class EffectEngine implements Runnable {
             return null;
         }
         
-        // In IDLE/OFF mode, return null (indefinite)
-        if (mode == ControlMode.IDLE || mode == ControlMode.OFF || currentEffectDuration == -1) {
+        // In IDLE/OFF/MUSIC mode, return null (indefinite)
+        if (mode == ControlMode.IDLE || mode == ControlMode.OFF || mode == ControlMode.MUSIC
+                || currentEffectDuration == -1) {
             return null;
         }
         
@@ -502,6 +638,15 @@ public class EffectEngine implements Runnable {
                 case "star":
                     currentEffect = new StarEffect();
                     break;
+                case "beat_pulse":
+                    currentEffect = new BeatPulseEffect();
+                    break;
+                case "beat_sweep":
+                    currentEffect = new BeatSweepEffect();
+                    break;
+                case "beat_sparkle":
+                    currentEffect = new BeatSparkleEffect();
+                    break;
                 default:
                     System.err.println("Unknown algorithm: " + algorithm);
                     return;
@@ -509,6 +654,14 @@ public class EffectEngine implements Runnable {
             
             // Initialize effect
             currentEffect.initialize(params, coordinates);
+
+            // Beat-aware effects install their own free-running fallback during
+            // initialize(); in MUSIC mode swap in the live clock so they render
+            // against the track that is actually playing.
+            if (currentEffect instanceof BeatAware && mode == ControlMode.MUSIC) {
+                ((BeatAware) currentEffect).setBeatSource(getMusicSyncService().getBeatClock());
+            }
+
             effectStartTime = System.currentTimeMillis();
             frameNumber = 0;
 
@@ -538,6 +691,9 @@ public class EffectEngine implements Runnable {
     
     public void stop() {
         running = false;
+        if (musicSyncService != null) {
+            musicSyncService.shutdown();
+        }
         if (renderThread != null) {
             renderThread.interrupt();
             try {
@@ -597,6 +753,23 @@ public class EffectEngine implements Runnable {
                 if (mode == ControlMode.CASINO) {
                     renderCasinoFrame();
                     Thread.sleep(casinoState == CasinoState.ROLLING ? 33 : 100);
+                    continue;
+                }
+
+                // Music mode: effects run indefinitely and are swapped when the
+                // track (or its sync state) changes, not on a duration timer.
+                if (mode == ControlMode.MUSIC) {
+                    updateMusicEffect();
+                    if (currentEffect != null) {
+                        renderFrame();
+                        long elapsedSeconds = (System.currentTimeMillis() - effectStartTime) / 1000;
+                        if (elapsedSeconds != lastBroadcastElapsedSeconds) {
+                            lastBroadcastElapsedSeconds = elapsedSeconds;
+                            broadcastState();
+                        }
+                    } else {
+                        Thread.sleep(100);
+                    }
                     continue;
                 }
 
@@ -725,17 +898,27 @@ public class EffectEngine implements Runnable {
         }
     }
     
+    /**
+     * Current state as broadcast over the WebSocket. Music details are attached
+     * only in MUSIC mode, so every other mode keeps the payload it always had.
+     */
+    public StateMessage buildStateMessage() {
+        MusicSyncService.MusicState music =
+            (mode == ControlMode.MUSIC && musicSyncService != null) ? musicSyncService.snapshot() : null;
+        return new StateMessage(
+            mode.toString(),
+            getCurrentEffect(),
+            getQueueSnapshot(),
+            queueCapacity,
+            System.currentTimeMillis(),
+            getRemainingSeconds(),
+            music
+        );
+    }
+
     private void broadcastState() {
         if (stateUpdateCallback != null) {
-            StateMessage state = new StateMessage(
-                mode.toString(),
-                getCurrentEffect(),
-                getQueueSnapshot(),
-                queueCapacity,
-                System.currentTimeMillis(),
-                getRemainingSeconds()
-            );
-            stateUpdateCallback.broadcastState(state);
+            stateUpdateCallback.broadcastState(buildStateMessage());
         }
     }
     

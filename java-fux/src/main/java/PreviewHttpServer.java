@@ -60,7 +60,16 @@ public class PreviewHttpServer {
 
         // OFF mode endpoint
         httpServer.createContext("/api/off", new OffHttpHandler(effectEngine));
-        
+
+        // Spotify one-time login and status (music mode)
+        httpServer.createContext("/api/spotify", new SpotifyAuthHttpHandler(effectEngine));
+
+        // Same handler at the bare /callback the redirect URI points at, so a
+        // login driven from a browser on the Pi itself completes without the
+        // paste step. Registering a short path here is what lets the redirect
+        // URI stay in the shape Spotify's dashboard actually accepts.
+        httpServer.createContext("/callback", new SpotifyAuthHttpHandler(effectEngine));
+
         // Health check endpoint
         httpServer.createContext("/health", exchange -> {
             try {
@@ -117,6 +126,12 @@ public class PreviewHttpServer {
                     "POST /api/off - Turn off all LEDs (OFF mode)\n" +
                     "Request body: none required\n" +
                     "Response: JSON with success status and mode set to OFF\n\n" +
+                    "GET /api/spotify/login - One-time Spotify authorization page (music mode)\n" +
+                    "Open in a browser once; the refresh token is then stored on the fux\n\n" +
+                    "GET /api/spotify/status - Spotify connection state and current track\n" +
+                    "Response: JSON with configured/authorized/polling flags and nowPlaying\n\n" +
+                    "POST /api/spotify/logout - Forget the stored Spotify tokens\n" +
+                    "GET /callback - Spotify redirect target (same handler, bare path)\n\n" +
                     "GET /health - Health check\n";
                 
                 byte[] responseBytes = response.getBytes("UTF-8");

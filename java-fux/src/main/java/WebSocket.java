@@ -99,15 +99,7 @@ public class WebSocket extends WebSocketServer {
         
         // Send current state to new client (only if hardware mode)
         if (isHardwareAvailable && effectEngine != null) {
-            StateMessage state = new StateMessage(
-                effectEngine.getMode().toString(),
-                effectEngine.getCurrentEffect(),
-                effectEngine.getQueueSnapshot(),
-                effectEngine.getQueueCapacity(),
-                System.currentTimeMillis(),
-                effectEngine.getRemainingSeconds()
-            );
-            webSocket.send(gson.toJson(state));
+            webSocket.send(gson.toJson(effectEngine.buildStateMessage()));
         } else {
             webSocket.send("{\"mode\":\"preview_only\",\"message\":\"Running in preview-only mode. Use /api/preview endpoint.\"}");
         }
@@ -126,7 +118,7 @@ public class WebSocket extends WebSocketServer {
             // Check if effect engine commands are available
             if (!isHardwareAvailable &&
                 (message.startsWith("MODE:") || message.startsWith("ADD_QUEUE:") ||
-                 message.startsWith("CASINO:") ||
+                 message.startsWith("CASINO:") || message.startsWith("MUSIC_") ||
                  message.equals("CLEAR_QUEUE") || message.equals("GET_STATE") ||
                  message.equals("STOP_EFFECT") || message.equals("MODE:OFF"))) {
                 webSocket.send("{\"error\":\"Command not available in preview-only mode. Use /api/preview endpoint instead.\"}");
@@ -161,6 +153,47 @@ public class WebSocket extends WebSocketServer {
             if (message.equals("MODE:CASINO")) {
                 effectEngine.setMode(ControlMode.CASINO);
                 System.out.println("Mode set to CASINO");
+                return;
+            }
+
+            if (message.equals("MODE:MUSIC")) {
+                effectEngine.setMode(ControlMode.MUSIC);
+                System.out.println("Mode set to MUSIC");
+                return;
+            }
+
+            // Beat calibration. BPM gives the period but not the phase, so the
+            // grid is nudged by ear and the correction is remembered per track.
+            // Format: MUSIC_OFFSET:+150 | MUSIC_OFFSET:-150 | MUSIC_OFFSET:0
+            if (message.startsWith("MUSIC_OFFSET:")) {
+                String payload = message.substring("MUSIC_OFFSET:".length()).trim();
+                try {
+                    if (payload.isEmpty() || "0".equals(payload)) {
+                        effectEngine.resetMusicOffset();
+                    } else if (payload.startsWith("+") || payload.startsWith("-")) {
+                        // Signed values are relative nudges
+                        long delta = Long.parseLong(payload.startsWith("+") ? payload.substring(1) : payload);
+                        effectEngine.nudgeMusicOffset(delta);
+                    } else {
+                        // Unsigned values set the offset outright
+                        effectEngine.nudgeMusicOffset(Long.parseLong(payload)
+                            - effectEngine.getMusicSyncService().getBeatClock().getOffsetMs());
+                    }
+                } catch (NumberFormatException e) {
+                    sendError(webSocket, "MUSIC_OFFSET expects milliseconds, e.g. MUSIC_OFFSET:+150");
+                }
+                return;
+            }
+
+            // Manual tempo override for a track with no BPM data.
+            // Format: MUSIC_BPM:128
+            if (message.startsWith("MUSIC_BPM:")) {
+                String payload = message.substring("MUSIC_BPM:".length()).trim();
+                try {
+                    effectEngine.setMusicBpm(Double.parseDouble(payload));
+                } catch (NumberFormatException e) {
+                    sendError(webSocket, "MUSIC_BPM expects a number, e.g. MUSIC_BPM:128");
+                }
                 return;
             }
 
@@ -218,15 +251,7 @@ public class WebSocket extends WebSocketServer {
             
             // State query
             if (message.equals("GET_STATE")) {
-                StateMessage state = new StateMessage(
-                    effectEngine.getMode().toString(),
-                    effectEngine.getCurrentEffect(),
-                    effectEngine.getQueueSnapshot(),
-                    effectEngine.getQueueCapacity(),
-                    System.currentTimeMillis(),
-                    effectEngine.getRemainingSeconds()
-                );
-                webSocket.send(gson.toJson(state));
+                webSocket.send(gson.toJson(effectEngine.buildStateMessage()));
                 return;
             }
             

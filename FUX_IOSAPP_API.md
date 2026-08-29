@@ -24,6 +24,40 @@ MODE:RANDOM
 ```
 Effects are randomly selected from available effects. Each plays for 2+ seconds before switching.
 
+#### Switch to Music Mode
+```
+MODE:MUSIC
+```
+The backend polls Spotify for what you are playing and drives a beat-aware effect from the track's
+tempo. Requires a one-time Spotify login (see **Spotify Endpoints** below). With nothing playing —
+or with no credentials configured — the mode still runs and falls back to `aurora`, reporting the
+reason in `music.error`.
+
+---
+
+### 1b. Music Mode Tuning
+
+#### Nudge the Beat Grid
+```
+MUSIC_OFFSET:+150
+MUSIC_OFFSET:-50
+MUSIC_OFFSET:0
+MUSIC_OFFSET:250
+```
+Shifts the beat grid in milliseconds, to compensate for network and audio latency. A **signed**
+value (`+`/`-`) is applied relative to the current offset; an **unsigned** value sets it absolutely;
+`0` resets it. The offset is stored per track in `~/.fux/beat_offsets.json` and reapplied whenever
+that track comes round again.
+
+#### Set the Tempo Manually
+```
+MUSIC_BPM:128
+```
+Used when no BPM could be looked up for the track (`music.bpm` is null). The value is remembered in
+the BPM cache for that track with `bpmSource: "manual"`.
+
+Both commands are safe to send with nothing playing — they are ignored.
+
 ---
 
 ### 2. Queue Operations
@@ -90,12 +124,56 @@ The server broadcasts state updates whenever something changes (mode switched, e
 ```
 
 **Fields:**
-- `mode`: `"QUEUE"` or `"RANDOM"`
+- `mode`: `"QUEUE"`, `"RANDOM"`, `"IDLE"`, `"OFF"` or `"MUSIC"`
 - `currentEffect`: Currently playing effect name (null if none)
 - `queue`: Array of queued effect names (in order)
 - `queueCapacity`: Maximum queue size (50)
 - `timestamp`: Unix timestamp in milliseconds
-- `remainingSeconds`: Seconds until current effect finishes (null if no effect playing)
+- `remainingSeconds`: Seconds until current effect finishes (null if no effect playing; always null in `MUSIC` mode, which has no fixed duration)
+- `music`: Present **only in `MUSIC` mode** (see below)
+
+#### Music Object
+
+```json
+{
+  "type": "STATE",
+  "mode": "MUSIC",
+  "currentEffect": "Beat Pulse",
+  "queue": [],
+  "queueCapacity": 50,
+  "timestamp": 1773868224487,
+  "remainingSeconds": null,
+  "music": {
+    "configured": true,
+    "authorized": true,
+    "polling": true,
+    "playing": true,
+    "synced": true,
+    "trackId": "2Foc5Q5nqNiosCNqttzHof",
+    "title": "Get Lucky",
+    "artist": "Daft Punk",
+    "bpm": 116.1,
+    "bpmSource": "deezer",
+    "offsetMs": 120,
+    "beatPhase": 0.37,
+    "positionSeconds": 84.2
+  }
+}
+```
+
+**Fields:**
+- `configured`: `~/.fux/spotify.json` (or the env vars) supplies a client id and secret
+- `authorized`: A Spotify login has been completed and the refresh token is stored
+- `polling`: The background poller is running
+- `playing`: Spotify reports playback in progress
+- `synced`: A tempo is known and the beat clock is locked — the beat-aware effect is running. When false, the mode falls back to `aurora`
+- `trackId` / `title` / `artist`: Now playing (null when nothing is)
+- `bpm`: Resolved tempo, or null when unknown — that is the cue to offer manual BPM entry
+- `bpmSource`: `"deezer"`, `"getsongbpm"`, `"manual"` or `"unknown"`
+- `offsetMs`: Current beat-grid offset for this track (see `MUSIC_OFFSET:`)
+- `beatPhase`: Position within the current beat, `0.0`–`1.0`, at `timestamp`. State is pushed about once a second, so interpolate locally between pushes for a smooth beat indicator
+- `positionSeconds`: Interpolated playback position
+- `error`: Present only when something is wrong (not configured, not authorized, Spotify unreachable). Reported once, not on every push
 
 #### Error Messages
 ```json
@@ -108,6 +186,56 @@ The server broadcasts state updates whenever something changes (mode switched, e
 
 ---
 
+## Spotify Endpoints (HTTP, port 8080)
+
+Music mode needs a one-time Spotify login. These live on the REST server, not the WebSocket.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/spotify/status` | JSON: `configured`, `authorized`, `polling`, `redirectUri`, `loginUrl`, optional `error` and `nowPlaying` |
+| `GET /api/spotify/login` | HTML page: the "Connect Spotify" authorize link plus the paste-the-code form |
+| `GET /api/spotify/callback?code=…` | Token exchange when the redirect reaches the fux |
+| `POST /api/spotify/callback` | Same exchange, `code=…` form-encoded, from the paste form |
+| `GET /callback` | The same handler at the bare path the redirect URI points at, so a login driven from a browser on the fux itself completes with no paste step |
+| `POST /api/spotify/logout` | Forgets the stored tokens |
+
+### Setup (once, by hand)
+
+1. Create an app at the Spotify developer dashboard and add
+   `http://127.0.0.1:8080/callback` as a redirect URI.
+2. Put the credentials on the fux in `~/.fux/spotify.json` (written owner-only):
+   ```json
+   {
+     "clientId": "…",
+     "clientSecret": "…",
+     "redirectUri": "http://127.0.0.1:8080/callback"
+   }
+   ```
+   `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `SPOTIFY_REDIRECT_URI` work instead.
+3. Open `http://<fux>:8080/api/spotify/login` in a browser and click **Connect Spotify**.
+4. Spotify only accepts HTTPS or loopback redirect URIs, so the redirect goes to `127.0.0.1` —
+   **your own machine**, not the fux — and the page will fail to load. That is expected: copy the
+   `code` value out of the address bar and paste it into the form on the login page.
+
+   The one exception is doing the login from a browser running on the fux itself, where
+   `127.0.0.1:8080` *is* the fux: `/callback` is served there, so it completes with no paste.
+
+> The redirect URI is deliberately kept in the shape of Spotify's own documented example
+> (`http://127.0.0.1:8000/callback`). The dashboard's validator rejects anything it does not like
+> with a bare *"Please enter a valid redirect URI"* — notably `localhost` (must be the literal
+> `127.0.0.1` or `[::1]`), plain `http://` on any non-loopback host, and hyphens anywhere in the
+> path. Whatever you register must match `redirectUri` in `spotify.json` character for character.
+
+The refresh token is stored in `~/.fux/spotify_tokens.json` and the access token is refreshed
+automatically, so this is needed only once.
+
+### In the App
+
+`ControlModel` exposes `spotifyLoginURL` — show it as a setup card whenever `music.configured` or
+`music.authorized` is false.
+
+---
+
 ## iOS App Implementation Guide
 
 ### Connection Flow
@@ -117,7 +245,7 @@ The server broadcasts state updates whenever something changes (mode switched, e
 4. Parse `type` field: `STATE` or `ERROR`
 
 ### UI Elements
-- **Mode Toggle:** Button to switch `MODE:QUEUE` ↔ `MODE:RANDOM`
+- **Mode Toggle:** Button to switch `MODE:QUEUE` ↔ `MODE:RANDOM` ↔ `MODE:MUSIC`
 - **Effect List:** Picker with 18 available effects
 - **Add Button:** Sends `ADD_QUEUE:effect_name`
 - **Clear Button:** Sends `CLEAR_QUEUE`
@@ -170,6 +298,12 @@ CLEAR_QUEUE
 
 # Switch to random mode
 MODE:RANDOM
+
+# Music mode, then nudge the beat 150ms later and reset it
+MODE:MUSIC
+MUSIC_OFFSET:+150
+MUSIC_OFFSET:0
+MUSIC_BPM:128
 ```
 
 ---

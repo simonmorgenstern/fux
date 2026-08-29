@@ -1,0 +1,20 @@
+{
+  "name": "Beat Sweep",
+  "description": "A soft horizontal band steps down the fox on every beat, covering it once per bar and bouncing back",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "beat_sweep",
+  "fps": 45,
+  "duration": 30,
+  "tags": ["music", "beat", "sweep", "mirror"],
+  "parameters": {
+    "bands": 4,
+    "tail_length": 2,
+    "tail_falloff": 0.5,
+    "decay": 2.0,
+    "band_width": 0.7,
+    "base_brightness": 0.04,
+    "beats_per_bar": 4,
+    "fallback_bpm": 120.0
+  }
+}

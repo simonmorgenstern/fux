@@ -118,6 +118,39 @@ All effects in the EffectRenderer are supported:
 - `diamond_pulse` - Diamond pulse pattern
 - `box_wave` - Wave in box pattern
 - `outside_spin` - Spinning outer edge
+- `beat_pulse` - Whole-fox pulse on the beat, accent colour on downbeats
+- `beat_sweep` - Horizontal band stepping down the fox, one band per beat
+- `beat_sparkle` - Mirrored spark bursts per beat over a breathing wash
+
+`GET /api/effects` is the authoritative list (38 effects).
+
+The three `beat_*` effects are beat-aware: in `MUSIC` mode they render against the live
+`BeatClock`, and in previews (and every other mode) against a fixed-tempo fallback driven by the
+render time rather than the wall clock — so an offline preview animates correctly instead of
+freezing on one frame.
+
+## Spotify / Music Mode Endpoints
+
+Music mode's one-time Spotify login is served from this same HTTP server under `/api/spotify`:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/spotify/status` | GET | JSON: `configured`, `authorized`, `polling`, `redirectUri`, `loginUrl`, optional `error` and `nowPlaying` |
+| `/api/spotify/login` | GET | HTML page with the authorize link and the paste-the-code form |
+| `/api/spotify/callback` | GET | Token exchange from `?code=…` (or an error page for `?error=…`) |
+| `/api/spotify/callback` | POST | Same exchange from the paste form, `code=…` form-encoded |
+| `/callback` | GET/POST | The same handler at the bare path the redirect URI points at |
+| `/api/spotify/logout` | POST | Forgets the stored tokens |
+
+```bash
+curl -s http://localhost:8080/api/spotify/status
+# {"configured":false,"authorized":false,"polling":false,
+#  "redirectUri":"http://127.0.0.1:8080/callback","loginUrl":"/api/spotify/login"}
+```
+
+Credentials come from `~/.fux/spotify.json` (or `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` /
+`SPOTIFY_REDIRECT_URI`); the refresh token is written to `~/.fux/spotify_tokens.json`. Full setup
+walkthrough in `FUX_IOSAPP_API.md`.
 
 ## Coordinate System
 

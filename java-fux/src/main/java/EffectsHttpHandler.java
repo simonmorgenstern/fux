@@ -59,7 +59,10 @@ public class EffectsHttpHandler implements HttpHandler {
         "flood_fill",
         "center_pulse",
         "center_heartbeat",
-        "star"
+        "star",
+        "beat_pulse",
+        "beat_sweep",
+        "beat_sparkle"
     };
     
     @Override

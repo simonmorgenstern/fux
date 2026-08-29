@@ -1,0 +1,19 @@
+{
+  "name": "Beat Sparkle",
+  "description": "Mirrored bursts of sparks on every beat over a slow breathing wash, heavier on downbeats",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "beat_sparkle",
+  "fps": 45,
+  "duration": 30,
+  "tags": ["music", "beat", "sparkle", "mirror"],
+  "parameters": {
+    "sparks_per_beat": 10,
+    "downbeat_multiplier": 2.0,
+    "spark_life_beats": 1.4,
+    "wash_brightness": 0.12,
+    "wash_color": [20, 30, 70],
+    "beats_per_bar": 4,
+    "fallback_bpm": 120.0
+  }
+}

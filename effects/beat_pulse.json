@@ -1,0 +1,18 @@
+{
+  "name": "Beat Pulse",
+  "description": "Whole-fox pulse locked to the beat of whatever Spotify is playing, with accented downbeats",
+  "version": "1.0",
+  "type": "procedural",
+  "algorithm": "beat_pulse",
+  "fps": 45,
+  "duration": 30,
+  "tags": ["music", "beat", "pulse", "full-body"],
+  "parameters": {
+    "attack": 0.06,
+    "decay": 4.5,
+    "min_brightness": 0.08,
+    "downbeat_boost": 1.0,
+    "beats_per_bar": 4,
+    "fallback_bpm": 120.0
+  }
+}
