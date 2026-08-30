@@ -31,7 +31,11 @@ public class WebSocket extends WebSocketServer {
         if (isHardwareAvailable) {
             try {
                 // WS281x constructor: (gpioPin, brightness, ledCount)
-                fuxStrip = new WS281x(18, 100, 268);
+                // Global hardware brightness cap, applied uniformly to every pixel
+                // regardless of what effects render, to keep current draw within
+                // what the two power injection points can supply.
+                // 204 = 80% of the library's 0-255 max.
+                fuxStrip = new WS281x(18, 204, 268);
                 musicModeRunner = new MusicMode(fuxStrip);
                 effectEngine = new EffectEngine(fuxStrip);
                 System.out.println("Hardware LED strip initialized (fuxStrip on GPIO 18)");
