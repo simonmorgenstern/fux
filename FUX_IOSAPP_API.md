@@ -33,6 +33,11 @@ tempo. Requires a one-time Spotify login (see **Spotify Endpoints** below). With
 or with no credentials configured — the mode still runs and falls back to `aurora`, reporting the
 reason in `music.error`.
 
+The effect is drawn from a pool of eight beat-aware effects (`beat_pulse`, `beat_sweep`,
+`beat_sparkle`, `firework`, `heartbeat`, `strobe`, `center_pulse`, `center_heartbeat`) and changes
+on every track change as well as every 32 bars within a long track, so `currentEffect` in the
+`STATE` payload can change mid-song.
+
 ---
 
 ### 1b. Music Mode Tuning

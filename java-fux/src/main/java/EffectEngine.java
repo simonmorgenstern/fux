@@ -73,19 +73,29 @@ public class EffectEngine implements Runnable {
         add("beat_sparkle");
     }};
 
-    // Music mode: beat-synced effects rotated on every track change, plus an
-    // ambient fallback for tracks whose tempo could not be looked up.
+    // Music mode: beat-synced effects rotated on every track change and every
+    // MUSIC_ROTATE_BARS bars within a track, plus an ambient fallback for
+    // tracks whose tempo could not be looked up. Everything listed here must
+    // implement BeatAware so it renders against the live clock.
     private final List<String> musicEffects = new ArrayList<String>() {{
         add("beat_pulse");
         add("beat_sweep");
         add("beat_sparkle");
+        add("firework");
+        add("heartbeat");
+        add("strobe");
+        add("center_pulse");
+        add("center_heartbeat");
     }};
     private static final String MUSIC_FALLBACK_EFFECT = "aurora";
+    /** Bars a beat-synced effect gets before another is drawn (~64s at 120 BPM). */
+    private static final long MUSIC_ROTATE_BARS = 32;
 
     private MusicSyncService musicSyncService;
     private volatile boolean musicEffectDirty = false;
     private String lastMusicEffect = null;
     private boolean musicEffectIsBeatSynced = false;
+    private long musicEffectStartBar = Long.MIN_VALUE;
 
     // Casino mode state
     public enum CasinoState { IDLE, ROLLING, RED, GREEN, BLACK }
@@ -131,6 +141,7 @@ public class EffectEngine implements Runnable {
             effectQueue.clear();
             currentEffect = null;
             lastMusicEffect = null;
+            musicEffectStartBar = Long.MIN_VALUE;
             musicEffectDirty = true;
             startMusicSync();
         } else if (previous == ControlMode.MUSIC) {
@@ -200,14 +211,18 @@ public class EffectEngine implements Runnable {
      * flips, so a track whose BPM arrives a second late still upgrades — and so
      * a pause, which stops the beat clock and would otherwise freeze the fox on
      * one frame, drops back to the ambient effect until playback resumes.
+     * A long track also rotates through the pool rather than sitting on one
+     * effect for four minutes.
      */
     private void updateMusicEffect() {
         MusicSyncService service = getMusicSyncService();
-        boolean synced = service.getBeatClock().isSynced();
+        BeatClock clock = service.getBeatClock();
+        boolean synced = clock.isSynced();
 
         boolean needsReload = musicEffectDirty
             || currentEffect == null
-            || synced != musicEffectIsBeatSynced;
+            || synced != musicEffectIsBeatSynced
+            || rotationDue(clock, synced);
         if (!needsReload) {
             return;
         }
@@ -227,8 +242,25 @@ public class EffectEngine implements Runnable {
 
         lastMusicEffect = next;
         musicEffectIsBeatSynced = synced;
+        musicEffectStartBar = synced ? clock.getBarIndex() : Long.MIN_VALUE;
         loadEffect(next, new QueueEntry(next, -1, null));
         broadcastState();
+    }
+
+    /**
+     * True once the running beat-synced effect has had its share of bars. A
+     * backwards jump (seek) rebases the counter instead of triggering a swap.
+     */
+    private boolean rotationDue(BeatClock clock, boolean synced) {
+        if (!synced || currentEffect == null || musicEffectStartBar == Long.MIN_VALUE) {
+            return false;
+        }
+        long bar = clock.getBarIndex();
+        if (bar < musicEffectStartBar) {
+            musicEffectStartBar = bar;
+            return false;
+        }
+        return bar - musicEffectStartBar >= MUSIC_ROTATE_BARS;
     }
 
     /** Random beat effect, avoiding an immediate repeat when there's a choice. */

@@ -3,12 +3,23 @@ import java.awt.Color;
 import java.util.HashMap;
 import java.util.Map;
 
-public class HeartbeatEffect implements Effect {
+/**
+ * Heartbeat — a lub-dub ring pair radiating from the center.
+ *
+ * Free running it beats at its own {@code bpm}. In MUSIC mode {@link EffectEngine}
+ * hands it the live {@link BeatClock} and one full lub-dub lands per
+ * {@code beats_per_cycle} beats of the track instead. No fallback source is
+ * installed on purpose: with no clock the effect keeps its original wall-clock
+ * timing, so queue, idle and preview renders look exactly as they always did.
+ */
+public class HeartbeatEffect implements Effect, BeatAware {
     private PixelCoordinates coords;
     private double bpm;
     private double pulseWidth;
     private double brightness;
     private int fps;
+    private double beatsPerCycle;
+    private BeatSource beat;   // null unless music mode installed a clock
 
     @Override
     public void initialize(JsonObject params, PixelCoordinates coords) {
@@ -17,6 +28,8 @@ public class HeartbeatEffect implements Effect {
         this.pulseWidth = params.has("pulse_width") ? params.get("pulse_width").getAsDouble() : 0.3;
         this.brightness = params.has("brightness") ? params.get("brightness").getAsDouble() : 1.0;
         this.fps = params.has("fps") ? params.get("fps").getAsInt() : 30;
+        this.beatsPerCycle = params.has("beats_per_cycle")
+            ? Math.max(0.25, params.get("beats_per_cycle").getAsDouble()) : 1.0;
 
         System.out.println("HeartbeatEffect initialized:");
         System.out.println("  BPM: " + bpm);
@@ -26,14 +39,26 @@ public class HeartbeatEffect implements Effect {
     }
 
     @Override
+    public void setBeatSource(BeatSource source) {
+        if (source != null) {
+            this.beat = source;
+        }
+    }
+
+    @Override
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         Map<Integer, Color> pixels = new HashMap<>();
 
-        // One full heartbeat cycle duration
-        double cycleDuration = 60.0 / bpm;
-
-        // Position within the current cycle (0.0 to 1.0)
-        double cyclePos = (timeSeconds % cycleDuration) / cycleDuration;
+        // Position within the current cycle (0.0 to 1.0). On a live clock the
+        // cycle is measured in beats so the lub always lands on the beat.
+        double cyclePos;
+        if (beat != null) {
+            double position = beat.getBeatPosition() / beatsPerCycle;
+            cyclePos = position - Math.floor(position);
+        } else {
+            double cycleDuration = 60.0 / bpm;
+            cyclePos = (timeSeconds % cycleDuration) / cycleDuration;
+        }
 
         // Two pulses per cycle: lub at 0%, dub at 30%
         // Each pulse ring travels from 0.0 to 1.0 over ~40% of half-cycle (20% of full cycle)

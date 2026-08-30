@@ -10,6 +10,7 @@
     "flash_rate": 4.0,
     "on_ratio": 0.3,
     "white_chance": 0.15,
-    "brightness": 1.0
+    "brightness": 1.0,
+    "flashes_per_beat": 1.0
   }
 }

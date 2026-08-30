@@ -7,12 +7,20 @@
   "fps": 30,
   "duration": 30,
   "parameters": {
-    "center_leds": [145, 146, 183, 184, 213],
+    "center_leds": [
+      145,
+      146,
+      183,
+      184,
+      213
+    ],
     "beat_period_sec": 1.2,
     "propagation_speed": 25.0,
     "min_brightness": 0.03,
     "max_brightness": 1.0,
     "hue": 0.0,
-    "saturation": 0.9
+    "saturation": 0.9,
+    "beats_per_cycle": 1.0,
+    "propagation_beats": 0.35
   }
 }

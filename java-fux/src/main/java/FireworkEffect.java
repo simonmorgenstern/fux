@@ -2,7 +2,18 @@ import com.google.gson.JsonObject;
 import java.awt.Color;
 import java.util.*;
 
-public class FireworkEffect implements Effect {
+/**
+ * Firework — rockets rise and burst into particle showers.
+ *
+ * Free running, rockets launch on a random spawn chance. In MUSIC mode
+ * {@link EffectEngine} installs the live {@link BeatClock} and launches become
+ * deterministic: a rocket goes up {@code rocket_rise_beats} before every
+ * {@code launch_every_beats}-th beat, so the burst lands on the beat, and the
+ * particle lifetime scales with the tempo so the fox clears before the next
+ * one. With no clock the original behaviour is kept, so queue, idle and
+ * preview renders are unchanged.
+ */
+public class FireworkEffect implements Effect, BeatAware {
     private PixelCoordinates coords;
     private List<Rocket> rockets;
     private List<Particle> particles;
@@ -12,6 +23,11 @@ public class FireworkEffect implements Effect {
     private double spawnChance;
     private int minParticles;
     private int maxParticles;
+    private double riseBeats;
+    private int launchEveryBeats;
+    private double particleLifeBeats;
+    private BeatSource beat;              // null unless music mode installed a clock
+    private long lastLaunchBeat = Long.MIN_VALUE;
 
     // Coordinate bounds (computed once)
     private double minY, maxY, minX, maxX;
@@ -42,6 +58,12 @@ public class FireworkEffect implements Effect {
         this.spawnChance = params.has("spawn_chance") ? params.get("spawn_chance").getAsDouble() : 0.08;
         this.minParticles = params.has("min_particles") ? params.get("min_particles").getAsInt() : 80;
         this.maxParticles = params.has("max_particles") ? params.get("max_particles").getAsInt() : 140;
+        this.riseBeats = params.has("rocket_rise_beats")
+            ? Math.max(0.25, params.get("rocket_rise_beats").getAsDouble()) : 1.0;
+        this.launchEveryBeats = params.has("launch_every_beats")
+            ? Math.max(1, params.get("launch_every_beats").getAsInt()) : 2;
+        this.particleLifeBeats = params.has("particle_life_beats")
+            ? Math.max(0.25, params.get("particle_life_beats").getAsDouble()) : 1.5;
 
         this.rockets = new ArrayList<>();
         this.particles = new ArrayList<>();
@@ -65,7 +87,24 @@ public class FireworkEffect implements Effect {
         System.out.println("  Coord bounds: X[" + (int)minX + "," + (int)maxX + "] Y[" + (int)minY + "," + (int)maxY + "]");
     }
 
+    @Override
+    public void setBeatSource(BeatSource source) {
+        if (source != null) {
+            this.beat = source;
+            lastLaunchBeat = Long.MIN_VALUE;
+        }
+    }
+
     private void spawnRocket() {
+        spawnRocket(-1.0);
+    }
+
+    /**
+     * @param riseFrames how many frames the rocket should take to reach its
+     *                   burst point, or a non-positive value for the
+     *                   free-running default of ~8-12 frames
+     */
+    private void spawnRocket(double riseFrames) {
         if (rockets.size() >= maxRockets) return;
 
         double rangeX = maxX - minX;
@@ -88,9 +127,12 @@ public class FireworkEffect implements Effect {
         lastThemeIndex = themeIdx;
         Color[] theme = THEMES[themeIdx];
 
-        // Fast rocket: covers the distance in ~8-12 frames
+        // Fast rocket: covers the distance in ~8-12 frames, or in exactly the
+        // number of frames the caller asked for when timing it to the beat.
         double dist = startY - targetY;
-        double speed = dist / (8.0 + random.nextDouble() * 4.0);
+        double speed = riseFrames > 0
+            ? dist / riseFrames
+            : dist / (8.0 + random.nextDouble() * 4.0);
 
         rockets.add(new Rocket(startX, startY, targetX, targetY, speed, theme));
     }
@@ -98,6 +140,10 @@ public class FireworkEffect implements Effect {
     @Override
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         Map<Integer, Color> pixels = new HashMap<>();
+
+        if (beat != null) {
+            launchOnBeat();
+        }
 
         // Update rockets
         List<Rocket> toRemove = new ArrayList<>();
@@ -134,12 +180,46 @@ public class FireworkEffect implements Effect {
         }
         particles.removeAll(deadParticles);
 
-        // Spawn new rocket only when all particles have mostly faded
-        if (rockets.isEmpty() && particles.size() < 20 && random.nextDouble() < spawnChance) {
+        // Spawn new rocket only when all particles have mostly faded.
+        // On a live clock the launches come from the beat grid instead.
+        if (beat == null && rockets.isEmpty() && particles.size() < 20
+                && random.nextDouble() < spawnChance) {
             spawnRocket();
         }
 
         return pixels;
+    }
+
+    /**
+     * Launches a rocket one rise-time before every launch_every_beats-th beat,
+     * so the burst itself lands on the beat rather than the launch.
+     */
+    private void launchOnBeat() {
+        long beatIndex = beat.getBeatIndex();
+        if (beatIndex == lastLaunchBeat) {
+            return;
+        }
+
+        // A jump (seek, track change, pause) clears the sky instead of firing
+        // off every beat that was skipped.
+        if (lastLaunchBeat != Long.MIN_VALUE
+                && (beatIndex < lastLaunchBeat || beatIndex - lastLaunchBeat > 4)) {
+            rockets.clear();
+            particles.clear();
+        }
+        lastLaunchBeat = beatIndex;
+
+        long leadBeats = Math.max(1, Math.round(riseBeats));
+        if (Math.floorMod(beatIndex + leadBeats, (long) launchEveryBeats) != 0) {
+            return;
+        }
+        spawnRocket(framesPerBeat() * riseBeats);
+    }
+
+    /** Render frames in one beat of the current tempo. */
+    private double framesPerBeat() {
+        double bpm = beat != null ? beat.getBpm() : 120.0;
+        return Math.max(1.0, fps * 60.0 / bpm);
     }
 
     private void explode(Rocket rocket) {
@@ -163,8 +243,12 @@ public class FireworkEffect implements Effect {
             int g = clamp(base.getGreen() + random.nextInt(30) - 15);
             int b = clamp(base.getBlue() + random.nextInt(30) - 15);
 
-            // Vary decay so particles die at different times (sparkle trail effect)
-            double decay = 0.015 + random.nextDouble() * 0.02;
+            // Vary decay so particles die at different times (sparkle trail
+            // effect). Locked to the beat, the burst instead has to be gone
+            // before the next one, so lifetime follows the tempo.
+            double decay = beat != null
+                ? (1.0 / (framesPerBeat() * particleLifeBeats)) * (0.7 + random.nextDouble() * 0.6)
+                : 0.015 + random.nextDouble() * 0.02;
             double gravity = 0.15 + random.nextDouble() * 0.1;
 
             particles.add(new Particle(rocket.x, rocket.y, vx, vy, new Color(r, g, b), decay, gravity));

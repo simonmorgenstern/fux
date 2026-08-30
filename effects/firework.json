@@ -11,6 +11,9 @@
     "spawn_chance": 0.05,
     "min_particles": 80,
     "max_particles": 140,
-    "fps": 30
+    "fps": 30,
+    "rocket_rise_beats": 1.0,
+    "launch_every_beats": 2,
+    "particle_life_beats": 1.5
   }
 }

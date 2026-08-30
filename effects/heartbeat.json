@@ -9,6 +9,7 @@
   "parameters": {
     "bpm": 72,
     "pulse_width": 0.3,
-    "brightness": 1.0
+    "brightness": 1.0,
+    "beats_per_cycle": 1.0
   }
 }

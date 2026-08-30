@@ -23,8 +23,14 @@ import java.util.Set;
  * the midline, and their BFS distance rings are naturally symmetric.
  * Per-LED mirror enforcement via LEDMirrorMap ensures any tiny graph
  * asymmetry is corrected.
+ *
+ * In MUSIC mode {@link EffectEngine} installs the live {@link BeatClock}: a
+ * wave is then launched on every beat and sized to cross the whole fox in
+ * {@code wave_span_beats} beats, instead of spawning on a seconds timer.  With
+ * no clock the original timing is kept, so queue, idle and preview renders are
+ * unchanged.
  */
-public class CenterPulseEffect implements Effect {
+public class CenterPulseEffect implements Effect, BeatAware {
     private PixelCoordinates coords;
     private LEDMirrorMap mirrorMap;
     private int fps;
@@ -32,6 +38,9 @@ public class CenterPulseEffect implements Effect {
     private double waveWidth;       // width of wave in hops
     private double spawnIntervalSec;
     private double brightness;
+    private double waveSpanBeats;   // beats a wave takes to cross the fox
+    private BeatSource beat;        // null unless music mode installed a clock
+    private long lastSpawnedBeat = Long.MIN_VALUE;
 
     private int[] dist;             // BFS distance from center for each LED
     private int maxDist;
@@ -60,6 +69,8 @@ public class CenterPulseEffect implements Effect {
             ? params.get("spawn_interval_sec").getAsDouble() : 1.2;
         this.brightness = params.has("brightness")
             ? params.get("brightness").getAsDouble() : 1.0;
+        this.waveSpanBeats = params.has("wave_span_beats")
+            ? Math.max(0.25, params.get("wave_span_beats").getAsDouble()) : 2.0;
 
         // Center LED indices — configurable, default to the fox's visual center
         int[] centerLeds;
@@ -113,19 +124,21 @@ public class CenterPulseEffect implements Effect {
     }
 
     @Override
-    public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
-        double dt = 1.0 / fps;
-        timeSinceSpawn += dt;
-
-        if (timeSinceSpawn >= spawnIntervalSec) {
-            waves.add(new Wave(PALETTE[random.nextInt(PALETTE.length)]));
-            timeSinceSpawn = 0;
+    public void setBeatSource(BeatSource source) {
+        if (source != null) {
+            this.beat = source;
+            // A different grid means the waves in flight belong to nothing.
+            waves.clear();
+            lastSpawnedBeat = Long.MIN_VALUE;
         }
-        for (Wave w : waves) w.radius += waveSpeed * dt;
-        // Remove waves that have fully passed the outermost ring
-        Iterator<Wave> it = waves.iterator();
-        while (it.hasNext()) {
-            if (it.next().radius > maxDist + waveWidth) it.remove();
+    }
+
+    @Override
+    public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
+        if (beat != null) {
+            updateWavesOnBeat();
+        } else {
+            updateWavesOnTimer();
         }
 
         int n = coords.getCount();
@@ -174,13 +187,74 @@ public class CenterPulseEffect implements Effect {
         return pixels;
     }
 
+    /** Free-running behaviour: a wave every spawn_interval_sec, advanced per frame. */
+    private void updateWavesOnTimer() {
+        double dt = 1.0 / fps;
+        timeSinceSpawn += dt;
+
+        if (timeSinceSpawn >= spawnIntervalSec) {
+            waves.add(new Wave(PALETTE[random.nextInt(PALETTE.length)], 0));
+            timeSinceSpawn = 0;
+        }
+        for (Wave w : waves) w.radius += waveSpeed * dt;
+        // Remove waves that have fully passed the outermost ring
+        Iterator<Wave> it = waves.iterator();
+        while (it.hasNext()) {
+            if (it.next().radius > maxDist + waveWidth) it.remove();
+        }
+    }
+
+    /**
+     * Music behaviour: one wave per beat, its radius read straight off the beat
+     * grid so a pause holds the picture and a seek does not leave ghosts behind.
+     */
+    private void updateWavesOnBeat() {
+        double beatPosition = beat.getBeatPosition();
+        long beatIndex = (long) Math.floor(beatPosition);
+
+        if (beatIndex != lastSpawnedBeat) {
+            // A small forward gap gets its missed waves; a jump (seek, track
+            // change) starts over rather than launching dozens at once.
+            if (lastSpawnedBeat != Long.MIN_VALUE && beatIndex > lastSpawnedBeat
+                    && beatIndex - lastSpawnedBeat <= 4) {
+                for (long b = lastSpawnedBeat + 1; b <= beatIndex; b++) {
+                    spawnWaveForBeat(b);
+                }
+            } else {
+                waves.clear();
+                spawnWaveForBeat(beatIndex);
+            }
+            lastSpawnedBeat = beatIndex;
+        }
+
+        // Sized so a wave crosses the whole fox in wave_span_beats beats.
+        double hopsPerBeat = (maxDist + waveWidth) / waveSpanBeats;
+        Iterator<Wave> it = waves.iterator();
+        while (it.hasNext()) {
+            Wave w = it.next();
+            w.radius = (beatPosition - w.bornAtBeat) * hopsPerBeat;
+            if (w.radius < 0 || w.radius > maxDist + waveWidth) it.remove();
+        }
+    }
+
+    /** Colours cycle with the beat counter so consecutive waves stay distinct. */
+    private void spawnWaveForBeat(long beatIndex) {
+        Color color = PALETTE[(int) Math.floorMod(beatIndex, PALETTE.length)];
+        waves.add(new Wave(color, beatIndex));
+    }
+
     @Override public void dispose() { if (waves != null) waves.clear(); }
     @Override public String getName() { return "Center Pulse"; }
     @Override public int getFPS() { return fps; }
 
     private static class Wave {
         final Color color;
+        final double bornAtBeat; // beat the wave was launched on (music mode)
         double radius; // current distance in BFS hops from center
-        Wave(Color color) { this.color = color; this.radius = 0; }
+        Wave(Color color, double bornAtBeat) {
+            this.color = color;
+            this.bornAtBeat = bornAtBeat;
+            this.radius = 0;
+        }
     }
 }

@@ -16,8 +16,14 @@ import java.util.Queue;
  * BFS graph distance from the center LEDs determines both the delay
  * and the brightness falloff, so the pulse follows the fox's shape
  * naturally.  Mirror symmetry enforced via LEDMirrorMap.
+ *
+ * In MUSIC mode {@link EffectEngine} installs the live {@link BeatClock} and
+ * the cycle length becomes {@code beats_per_cycle} beats of the track instead
+ * of {@code beat_period_sec}; propagation stays in real seconds so the wave
+ * front still travels at the same speed.  With no clock the original timing is
+ * kept, so queue, idle and preview renders are unchanged.
  */
-public class CenterHeartbeatEffect implements Effect {
+public class CenterHeartbeatEffect implements Effect, BeatAware {
     private PixelCoordinates coords;
     private LEDMirrorMap mirrorMap;
     private int fps;
@@ -27,6 +33,9 @@ public class CenterHeartbeatEffect implements Effect {
     private double maxBrightness;
     private float hue;
     private float saturation;
+    private double beatsPerCycle;
+    private double propagationBeats;    // beats the front takes to reach the outermost LED
+    private BeatSource beat;            // null unless music mode installed a clock
 
     private int[] dist;                 // BFS distance from center
     private int maxDist;
@@ -47,6 +56,10 @@ public class CenterHeartbeatEffect implements Effect {
             ? params.get("hue").getAsFloat() : 0.0f; // red
         this.saturation = params.has("saturation")
             ? params.get("saturation").getAsFloat() : 0.9f;
+        this.beatsPerCycle = params.has("beats_per_cycle")
+            ? Math.max(0.25, params.get("beats_per_cycle").getAsDouble()) : 1.0;
+        this.propagationBeats = params.has("propagation_beats")
+            ? Math.max(0.0, params.get("propagation_beats").getAsDouble()) : 0.35;
 
         int[] centerLeds;
         if (params.has("center_leds")) {
@@ -121,18 +134,42 @@ public class CenterHeartbeatEffect implements Effect {
     }
 
     @Override
+    public void setBeatSource(BeatSource source) {
+        if (source != null) {
+            this.beat = source;
+        }
+    }
+
+    @Override
     public Map<Integer, Color> renderFrame(long frameNumber, double timeSeconds) {
         int n = coords.getCount();
         float[] bri = new float[n];
+
+        // On a live clock, run off the track's own timeline: the cycle spans
+        // beats_per_cycle beats, and "now" is the interpolated beat position
+        // expressed in seconds so the propagation delay keeps its units.
+        double period = beatPeriodSec;
+        double now = timeSeconds;
+        // Travel time from the center to the outermost LED. On a live clock it
+        // is a fraction of a beat rather than a fixed hops/second: at a fast
+        // tempo a fixed speed would still be crossing the fox when the next
+        // beat lands, and the pulse would smear into a flat glow.
+        double edgeDelay = maxDist / propagationSpeed;
+        if (beat != null) {
+            double secondsPerBeat = 60.0 / beat.getBpm();
+            period = secondsPerBeat * beatsPerCycle;
+            now = beat.getBeatPosition() * secondsPerBeat;
+            edgeDelay = secondsPerBeat * propagationBeats;
+        }
 
         for (int i = 0; i < n; i++) {
             if (dist[i] < 0) continue;
 
             // Delay: the pulse arrives later at distant LEDs
-            double delay = dist[i] / propagationSpeed;
-            double localTime = timeSeconds - delay;
-            if (localTime < 0) localTime += beatPeriodSec * Math.ceil(-localTime / beatPeriodSec);
-            double phase = (localTime % beatPeriodSec) / beatPeriodSec;
+            double delay = ((double) dist[i] / Math.max(1, maxDist)) * edgeDelay;
+            double localTime = now - delay;
+            if (localTime < 0) localTime += period * Math.ceil(-localTime / period);
+            double phase = (localTime % period) / period;
 
             double env = heartbeatEnvelope(phase);
 

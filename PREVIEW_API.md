@@ -129,6 +129,13 @@ The three `beat_*` effects are beat-aware: in `MUSIC` mode they render against t
 render time rather than the wall clock — so an offline preview animates correctly instead of
 freezing on one frame.
 
+`firework`, `heartbeat`, `strobe`, `center_pulse` and `center_heartbeat` are also beat-aware, and
+`MUSIC` mode draws from all eight. These five install no fallback: without a live clock they run
+on their own timing, so their previews are exactly what they always were. Their beat behaviour is
+tuned by the extra parameters in their JSON (`rocket_rise_beats`, `launch_every_beats`,
+`particle_life_beats`, `beats_per_cycle`, `flashes_per_beat`, `wave_span_beats`,
+`propagation_beats`), which have no effect outside `MUSIC` mode.
+
 ## Spotify / Music Mode Endpoints
 
 Music mode's one-time Spotify login is served from this same HTTP server under `/api/spotify`:

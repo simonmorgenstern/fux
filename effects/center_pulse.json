@@ -7,10 +7,17 @@
   "fps": 30,
   "duration": 30,
   "parameters": {
-    "center_leds": [145, 146, 183, 184, 213],
+    "center_leds": [
+      145,
+      146,
+      183,
+      184,
+      213
+    ],
     "wave_speed": 8.0,
     "wave_width": 5.0,
     "spawn_interval_sec": 1.2,
-    "brightness": 1.0
+    "brightness": 1.0,
+    "wave_span_beats": 2.0
   }
 }
