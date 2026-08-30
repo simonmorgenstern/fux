@@ -31,3 +31,6 @@ LEDs can be described as
   ["c", "[4, 6, 8, 10, 12, 14, 16]"]
 ]
 ```
+
+## Credits
+Music mode's beat sync uses song tempo data from [GetSongBPM](https://getsongbpm.com).
