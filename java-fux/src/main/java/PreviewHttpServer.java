@@ -1,6 +1,8 @@
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +18,7 @@ public class PreviewHttpServer {
     private HttpServer httpServer;
     private int port;
     private final EffectEngine effectEngine;
+    private ExecutorService requestExecutor;
     
     public PreviewHttpServer(EffectEngine effectEngine) throws IOException {
         this.effectEngine = effectEngine;
@@ -150,11 +153,15 @@ public class PreviewHttpServer {
      * Start the HTTP server
      */
     public void start() {
-        httpServer.setExecutor(null); // Use default executor
+        // The JDK default (setExecutor(null)) dispatches all requests on a single
+        // thread, so the app's on-connect burst of one preview request per effect
+        // (38 of them) serializes and later ones blow past the client's timeout.
+        requestExecutor = Executors.newFixedThreadPool(8);
+        httpServer.setExecutor(requestExecutor);
         httpServer.start();
         logger.info("Preview HTTP server started on port {}", port);
     }
-    
+
     /**
      * Stop the HTTP server
      */
@@ -162,6 +169,9 @@ public class PreviewHttpServer {
         if (httpServer != null) {
             httpServer.stop(0);
             logger.info("Preview HTTP server stopped");
+        }
+        if (requestExecutor != null) {
+            requestExecutor.shutdownNow();
         }
     }
     
