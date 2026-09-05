@@ -66,6 +66,7 @@ sshpass -e scp $SSH_OPTS \
   "$LED_NAMER_DIR/led-connections.json" \
   "$LED_NAMER_DIR/led-boxes.json" \
   "$LED_NAMER_DIR/led-groups.json" \
+  "$LED_NAMER_DIR/led-mirrors.json" \
   "$PI:$PI_LED_NAMER_DIR/"
 ok "Topology synced to $PI:$PI_LED_NAMER_DIR/"
 
