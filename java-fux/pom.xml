@@ -61,6 +61,8 @@
                     <include>assets/pixelCoordinates.json</include>
                     <include>led-namer/led-groups.json</include>
                     <include>led-namer/led-connections.json</include>
+                    <include>led-namer/led-boxes.json</include>
+                    <include>led-namer/led-mirrors.json</include>
                 </includes>
             </resource>
         </resources>
