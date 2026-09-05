@@ -1,0 +1,30 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+000000000000000000000064 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Arrangement.swift"; sourceTree = "<group>"; };
+0000000000000000000000C8 = { isa = PBXBuildFile; fileRef = 000000000000000000000064; };
+000000000000000000000065 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArrangementTimeline.swift"; sourceTree = "<group>"; };
+0000000000000000000000C9 = { isa = PBXBuildFile; fileRef = 000000000000000000000065; };
+000000000000000000000066 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FuxStudioApp.swift"; sourceTree = "<group>"; };
+0000000000000000000000CA = { isa = PBXBuildFile; fileRef = 000000000000000000000066; };
+000000000000000000000067 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudioModel.swift"; sourceTree = "<group>"; };
+0000000000000000000000CB = { isa = PBXBuildFile; fileRef = 000000000000000000000067; };
+000000000000000000000068 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StudioView.swift"; sourceTree = "<group>"; };
+0000000000000000000000CC = { isa = PBXBuildFile; fileRef = 000000000000000000000068; };
+00000000000000000000012C = { isa = PBXFileReference; lastKnownFileType = text.json; path = pixelCoordinates.json; sourceTree = "<group>"; };
+00000000000000000000012D = { isa = PBXBuildFile; fileRef = 00000000000000000000012C; };
+000000000000000000000001 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = 00000000000000000000000A; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = 000000000000000000000002; productRefGroup = 000000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000005); };
+000000000000000000000002 = { isa = PBXGroup; children = (000000000000000000000003, 000000000000000000000004); sourceTree = "<group>"; };
+000000000000000000000003 = { isa = PBXGroup; path = Sources/FuxStudio; children = (000000000000000000000064, 000000000000000000000065, 000000000000000000000066, 000000000000000000000067, 000000000000000000000068, 00000000000000000000012C); sourceTree = "<group>"; };
+000000000000000000000004 = { isa = PBXGroup; name = Products; children = (000000000000000000000006); sourceTree = "<group>"; };
+000000000000000000000005 = { isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000000B; buildPhases = (000000000000000000000007, 000000000000000000000008, 000000000000000000000009); buildRules = (); dependencies = (); name = FuxStudio; productName = FuxStudio; productReference = 000000000000000000000006; productType = "com.apple.product-type.application"; };
+000000000000000000000006 = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FuxStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+000000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (0000000000000000000000C8, 0000000000000000000000C9, 0000000000000000000000CA, 0000000000000000000000CB, 0000000000000000000000CC); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000008 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000009 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (00000000000000000000012D); runOnlyForDeploymentPostprocessing = 0; };
+00000000000000000000000A = { isa = XCConfigurationList; buildConfigurations = (000000000000000000000014, 00000000000000000000001E); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+00000000000000000000000B = { isa = XCConfigurationList; buildConfigurations = (000000000000000000000015, 00000000000000000000001F); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+000000000000000000000014 = { isa = XCBuildConfiguration; name = Debug; buildSettings = { SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 13.0; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; };
+00000000000000000000001E = { isa = XCBuildConfiguration; name = Release; buildSettings = { SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 13.0; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; }; };
+000000000000000000000015 = { isa = XCBuildConfiguration; name = Debug; buildSettings = { PRODUCT_NAME = FuxStudio; PRODUCT_BUNDLE_IDENTIFIER = ch.simonmorgenstern.FuxStudio; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Info.plist; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; ENABLE_HARDENED_RUNTIME = YES; SWIFT_EMIT_LOC_STRINGS = YES; }; };
+00000000000000000000001F = { isa = XCBuildConfiguration; name = Release; buildSettings = { PRODUCT_NAME = FuxStudio; PRODUCT_BUNDLE_IDENTIFIER = ch.simonmorgenstern.FuxStudio; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Info.plist; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; ENABLE_HARDENED_RUNTIME = YES; SWIFT_EMIT_LOC_STRINGS = YES; }; };
+}; rootObject = 000000000000000000000001; }

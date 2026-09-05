@@ -49,6 +49,8 @@ public class PreviewHttpServer {
      * Setup HTTP request handlers
      */
     private void setupHandlers() {
+        httpServer.createContext("/api/studio", new StudioHttpHandler(effectEngine));
+
         // Preview GIF endpoint
         httpServer.createContext("/api/preview", new PreviewHttpHandler(effectEngine));
         

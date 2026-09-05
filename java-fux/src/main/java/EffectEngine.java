@@ -19,11 +19,73 @@ public class EffectEngine implements Runnable {
     private WS281x mainStrip;
     private final Object renderLock = new Object();
     private PixelCoordinates coordinates;
+    private final MusicArrangementStore arrangementStore = new MusicArrangementStore();
+    private ArrangementRenderer arrangementRenderer;
+    private volatile String arrangedEffect;
+    private boolean arrangementActive;
+    private long arrangementBroadcast;
+    private String arrangementFailureTrack;
+    private MusicArrangement failedArrangement;
+    public MusicArrangementStore getArrangementStore() { return arrangementStore; }
+
+    private boolean renderArrangement() throws Exception {
+        MusicSyncService service = getMusicSyncService();
+        NowPlaying track = service.getNowPlaying();
+        MusicArrangement show = null;
+        if (track.hasTrack() && track.playing && service.hasFreshPlayback()) {
+            try { show = arrangementStore.get(track.trackId); }
+            catch (java.io.IOException error) {
+                if (!track.trackId.equals(arrangementFailureTrack)) {
+                    arrangementFailureTrack = track.trackId;
+                    broadcastError("Saved arrangement unavailable; using automatic music effects");
+                }
+            }
+        }
+        if (show == failedArrangement) show = null;
+        if (show == null) {
+            if (arrangementActive) {
+                arrangementRenderer.close(); arrangementActive = false; arrangedEffect = null;
+                currentEffect = null; musicEffectDirty = true;
+            }
+            return false;
+        }
+        if (arrangementRenderer == null) arrangementRenderer = new ArrangementRenderer(coordinates);
+        arrangementActive = true;
+        double time = Math.min(show.durationSeconds, service.getBeatClock().getPositionSeconds());
+        Map<Integer, Color> pixels;
+        try { pixels = arrangementRenderer.render(show, Math.max(0, time)); }
+        catch (Exception error) {
+            failedArrangement = show;
+            arrangementRenderer.close(); arrangementActive = false; arrangedEffect = null;
+            currentEffect = null; musicEffectDirty = true;
+            broadcastError("Arrangement render failed; using automatic music effects");
+            return false;
+        }
+        MusicArrangement.Clip clip = show.clipAt(time);
+        String next = clip == null ? "Blackout" : clip.effect;
+        boolean changed = !next.equals(arrangedEffect);
+        arrangedEffect = next;
+        synchronized (renderLock) {
+            if (!closed && mainStrip != null && mode == ControlMode.MUSIC) {
+                for (int i = 0; i < 268; i++) {
+                    Color color = pixels.get(i);
+                    mainStrip.setPixelColourRGB(i, color == null ? 0 : color.getRed(),
+                        color == null ? 0 : color.getGreen(), color == null ? 0 : color.getBlue());
+                }
+                mainStrip.render();
+            }
+        }
+        if (changed || System.currentTimeMillis() - arrangementBroadcast >= 1000) {
+            arrangementBroadcast = System.currentTimeMillis(); broadcastState();
+        }
+        Thread.sleep(16);
+        return true;
+    }
     
     // Queue management
     private final LinkedBlockingQueue<QueueEntry> effectQueue = new LinkedBlockingQueue<>();
     private final int queueCapacity = 50;
-    private ControlMode mode = ControlMode.RANDOM;
+    private volatile ControlMode mode = ControlMode.RANDOM;
     private long effectStartTime = 0;
     private long frameNumber = 0;
     private int currentEffectDuration = 30; // total seconds for current effect
@@ -217,7 +279,7 @@ public class EffectEngine implements Runnable {
     private void updateMusicEffect() {
         MusicSyncService service = getMusicSyncService();
         BeatClock clock = service.getBeatClock();
-        boolean synced = clock.isSynced();
+        boolean synced = clock.isSynced() && service.hasFreshPlayback();
 
         boolean needsReload = musicEffectDirty
             || currentEffect == null
@@ -474,6 +536,7 @@ public class EffectEngine implements Runnable {
     }
     
     public String getCurrentEffect() {
+        if (mode == ControlMode.MUSIC && arrangedEffect != null) return arrangedEffect;
         String name = currentEffect != null ? currentEffect.getName() : null;
         return name;
     }
@@ -781,6 +844,9 @@ public class EffectEngine implements Runnable {
         
         while (running) {
             try {
+                if (mode != ControlMode.MUSIC && arrangementActive) {
+                    arrangementRenderer.close(); arrangementActive = false; arrangedEffect = null;
+                }
                 // Casino mode is handled separately - it bypasses the effect system.
                 if (mode == ControlMode.CASINO) {
                     renderCasinoFrame();
@@ -791,6 +857,7 @@ public class EffectEngine implements Runnable {
                 // Music mode: effects run indefinitely and are swapped when the
                 // track (or its sync state) changes, not on a duration timer.
                 if (mode == ControlMode.MUSIC) {
+                    if (renderArrangement()) continue;
                     updateMusicEffect();
                     if (currentEffect != null) {
                         renderFrame();
@@ -874,6 +941,7 @@ public class EffectEngine implements Runnable {
             }
         }
         
+        if (arrangementRenderer != null) arrangementRenderer.close();
         System.out.println("EffectEngine render thread exited");
     }
     
@@ -937,6 +1005,17 @@ public class EffectEngine implements Runnable {
     public StateMessage buildStateMessage() {
         MusicSyncService.MusicState music =
             (mode == ControlMode.MUSIC && musicSyncService != null) ? musicSyncService.snapshot() : null;
+        if (music != null && arrangedEffect != null && music.trackId != null) {
+            try {
+                MusicArrangement show = arrangementStore.get(music.trackId);
+                if (show != null) {
+                    music.bpm = show.bpm; music.bpmSource = "arrangement";
+                    music.offsetMs = Math.round(show.offsetMs);
+                    double beat = show.beat(music.positionSeconds);
+                    music.beatPhase = beat - Math.floor(beat); music.synced = music.playing;
+                }
+            } catch (java.io.IOException ignored) { }
+        }
         return new StateMessage(
             mode.toString(),
             getCurrentEffect(),

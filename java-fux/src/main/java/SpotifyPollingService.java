@@ -23,6 +23,7 @@ public class SpotifyPollingService implements Runnable {
     private static final long MAX_BACKOFF_MS = 30000;
 
     public interface Listener {
+        default void onPlaybackConfirmed() { }
         /** Called after every successful poll, including "nothing playing". */
         void onNowPlaying(NowPlaying nowPlaying);
 
@@ -139,6 +140,7 @@ public class SpotifyPollingService implements Runnable {
 
         if (response.status == 304) {
             // Unchanged since the last poll; the beat clock keeps interpolating.
+            listener.onPlaybackConfirmed();
             backoffMs = 0;
             return intervalMs;
         }

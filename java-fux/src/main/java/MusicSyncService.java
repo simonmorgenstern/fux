@@ -57,6 +57,11 @@ public class MusicSyncService implements SpotifyPollingService.Listener {
     private volatile String bpmSource;
     private volatile String lastError;
     private volatile boolean running;
+    private volatile long lastPlaybackConfirmation;
+    public boolean hasFreshPlayback() {
+        return running && System.nanoTime() - lastPlaybackConfirmation < 15_000_000_000L;
+    }
+    @Override public void onPlaybackConfirmed() { lastPlaybackConfirmation = System.nanoTime(); lastError = null; }
 
     public MusicSyncService() {
         this.auth = new SpotifyAuthService();
@@ -122,6 +127,7 @@ public class MusicSyncService implements SpotifyPollingService.Listener {
 
     @Override
     public void onNowPlaying(NowPlaying nowPlaying) {
+        onPlaybackConfirmed();
         NowPlaying previous = current;
         boolean trackChanged = !nowPlaying.isSameTrack(previous);
         current = nowPlaying;
@@ -224,8 +230,8 @@ public class MusicSyncService implements SpotifyPollingService.Listener {
         state.configured = auth.isConfigured();
         state.authorized = auth.isAuthorized();
         state.polling = running;
-        state.playing = track.hasTrack() && track.playing;
-        state.synced = beatClock.isSynced();
+        state.playing = track.hasTrack() && track.playing && hasFreshPlayback();
+        state.synced = beatClock.isSynced() && hasFreshPlayback();
         state.trackId = track.trackId;
         state.title = track.title;
         state.artist = track.artist;
